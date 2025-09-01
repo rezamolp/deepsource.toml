@@ -1,0 +1,195 @@
+from telegram import Update
+from telegram.ext import ContextTypes
+from utils.data import load_data, save_data
+from services.telethon_manager import get_status
+from utils.keyboards import main_menu, otp_keyboard, back_menu, channel_settings_menu, per_channel_settings_menu, logs_nav_menu
+import logging, uuid
+
+antispam_enabled = True
+
+async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+    data = load_data()
+    logger = logging.getLogger(__name__)
+    logger.info('button_clicked', extra={
+        'event':'button_clicked',
+        'chat_id': getattr(update.effective_chat,'id',None),
+        'user_id': getattr(update.effective_user,'id',None),
+        'data': query.data,
+        'state': dict(context.user_data)
+    })
+
+    if query.data == "status":
+        telethon_status = "آماده" if get_status() == "ready" else "تنظیم‌نشده"
+        data = load_data() or {}
+        channels = data.get('channels', [])
+        success = int(data.get('link_changes_success', 0))
+        fail = int(data.get('link_changes_fail', 0))
+        attacks = int(data.get('attacks', 0))
+        tele_phone = data.get('telethon_phone', 'n/a')
+        last_link = data.get('last_rotation_link', 'n/a')
+        session_ok = data.get('session_status', 'n/a')
+        status_card = (
+            "📊 وضعیت ضداسپم\n"
+            f"- ضداسپم: {'فعال' if antispam_enabled else 'غیرفعال'}\n"
+            f"- Telethon: {telethon_status} (phone={tele_phone}, session={session_ok})\n"
+            f"- Join threshold/window: 10 / 60s\n"
+            f"- View threshold/window: 50 / 60s (3 پست)\n"
+            f"- کانال‌ها: {len(channels)}\n"
+            f"- آخرین لینک/rotation: {last_link}\n"
+            f"- link_changes: ok={success} / fail={fail}\n"
+            f"- attacks: {attacks}\n"
+        )
+        try:
+            await query.edit_message_text(status_card, reply_markup=main_menu())
+        except Exception:
+            await query.message.reply_text(status_card, reply_markup=main_menu())
+    elif query.data == "settings":
+        context.user_data["waiting_for_settings"] = True
+        await query.edit_message_text("مقادیر جدید تنظیمات را ارسال کن (مثال: join=10, view=50)", reply_markup=back_menu())
+    elif query.data == "channel_settings":
+        d = load_data() or {}
+        chs = d.get('channels', [])
+        await query.edit_message_text("یکی از کانال‌ها را انتخاب کن:", reply_markup=channel_settings_menu(chs))
+    elif query.data.startswith("cs_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['cs_base'] = base
+        await query.edit_message_text(f"تنظیمات @{base}:", reply_markup=per_channel_settings_menu(base))
+    elif query.data.startswith("csj_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('join_threshold', base)
+        await query.edit_message_text(f"مقدار جدید Join Threshold برای @{base} را ارسال کن:", reply_markup=back_menu())
+    elif query.data.startswith("csw_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('join_window', base)
+        await query.edit_message_text(f"مقدار جدید Join Window برای @{base} را ارسال کن (ثانیه):", reply_markup=back_menu())
+    elif query.data.startswith("csvt_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('view_threshold', base)
+        await query.edit_message_text(f"مقدار جدید View Threshold برای @{base} را ارسال کن:", reply_markup=back_menu())
+    elif query.data == "logs":
+        d = load_data() or {}
+        events = d.get('events', [])
+        context.user_data['logs_offset'] = max(0, len(events) - 10)
+        page = events[-10:]
+        text = "📜 10 رخداد اخیر:\n" + ("\n".join(page) if page else "(خالی)")
+        await query.edit_message_text(text, reply_markup=logs_nav_menu(has_prev=context.user_data['logs_offset']>0, has_next=False))
+    elif query.data in ("logs_prev","logs_next"):
+        d = load_data() or {}
+        events = d.get('events', [])
+        offset = int(context.user_data.get('logs_offset', 0))
+        if query.data == 'logs_prev':
+            offset = max(0, offset - 10)
+        else:
+            offset = min(max(0, len(events)-10), offset + 10)
+        context.user_data['logs_offset'] = offset
+        page = events[offset:offset+10]
+        text = "📜 رخدادها:\n" + ("\n".join(page) if page else "(خالی)")
+        has_prev = offset > 0
+        has_next = offset + 10 < len(events)
+        try:
+            await query.edit_message_text(text, reply_markup=logs_nav_menu(has_prev, has_next))
+        except Exception:
+            await query.message.reply_text(text, reply_markup=logs_nav_menu(has_prev, has_next))
+    elif query.data == "test_antispam":
+        trace_id = str(uuid.uuid4())
+        # ask for channel username to rotate
+        context.user_data['waiting_for_test_channel'] = True
+        try:
+            await query.edit_message_text("نام کاربری کانال هدف برای تست را بفرست (مثال: @name)", reply_markup=back_menu())
+        except Exception:
+            await query.message.reply_text("نام کاربری کانال هدف برای تست را بفرست (مثال: @name)", reply_markup=back_menu())
+        return
+        # rotation is handled in messages handler after channel is provided
+    elif query.data == "simulate":
+        # Inject synthetic join/view events to exercise detectors
+        
+        from services.view_burst import ViewBurstDetector
+        import time
+        d = load_data() or {}
+        ev = d.get('events', [])
+        ev.append("simulate:start")
+        vb = ViewBurstDetector(window_seconds=60, threshold=50)
+        now = time.time()
+        # simulate oscillation and positive deltas
+        for v in (10, 20, 15, 30, 55):
+            vb.add(v, ts=now); now += 5
+        ev.append(f"simulate:trigger={vb.total>=vb.threshold}")
+        d['events'] = ev[-100:]
+        save_data(d)
+        await query.edit_message_text("🎛️ شبیه‌سازی انجام شد و رخداد ثبت شد.", reply_markup=main_menu())
+    elif query.data == "add_account":
+        context.user_data["waiting_for_phone"] = True
+        context.user_data.pop("otp_code", None)
+        await query.edit_message_text("شمارهٔ تلفن را بفرست (مثال: +98912...)", reply_markup=back_menu())
+    elif query.data == "add_channel":
+        context.user_data["waiting_for_channel"] = True
+        await query.edit_message_text("نام کاربری کانال (@name یا t.me/...) را بفرست.", reply_markup=back_menu())
+    elif query.data == "add_admin":
+        context.user_data["waiting_for_admin"] = True
+        await query.edit_message_text("شناسهٔ عددی یا @username ادمین جدید را بفرست.", reply_markup=back_menu())
+    elif query.data == "otp_text":
+        context.user_data["waiting_for_code"] = True
+        await query.edit_message_text("کد را به صورت پیام متنی ارسال کن (۴ تا ۸ رقم)", reply_markup=otp_keyboard())
+    elif query.data and query.data.startswith("otp_"):
+        digit = query.data.split("_",1)[-1]
+        buf = context.user_data.get("otp_code", "")
+        if len(buf) < 6 and digit.isdigit():
+            buf += digit
+        context.user_data["otp_code"] = buf
+        logger.info('otp_digit_append', extra={'event':'otp_digit_append','len':len(buf)})
+        masked = buf  # نمایش مستقیم ارقام طبق درخواست، ولی لاگ فقط length دارد
+        try:
+            await query.edit_message_text(f"کد: {masked}", reply_markup=otp_keyboard())
+        except Exception:
+            await query.message.reply_text(f"کد: {masked}", reply_markup=otp_keyboard())
+    elif query.data == "otp_backspace":
+        buf = context.user_data.get("otp_code", "")
+        buf = buf[:-1] if buf else ""
+        context.user_data["otp_code"] = buf
+        logger.info('otp_digit_delete', extra={'event':'otp_digit_delete','len':len(buf)})
+        txt = f"کد: {buf}" if buf else "کد: "
+        try:
+            await query.edit_message_text(txt, reply_markup=otp_keyboard())
+        except Exception:
+            await query.message.reply_text(txt, reply_markup=otp_keyboard())
+    elif query.data == "otp_confirm":
+        code = context.user_data.get("otp_code", "")
+        phone = context.user_data.get("phone")
+        trace_id = context.user_data.get("trace_id") or str(uuid.uuid4())
+        from services import telethon_manager
+        result = {"error":"no_phone"} if not phone else None
+        if phone:
+            try:
+                result = await telethon_manager.confirm_code(phone, code, trace_id=trace_id)
+            except Exception as e:
+                result = {"error": str(e)}
+        err = result.get("error") if isinstance(result, dict) else None
+        ok = not err
+        logger.info('otp_confirm', extra={'event':'otp_confirm','result':'ok' if ok else 'fail','reason': err or '', 'trace_id':trace_id})
+        if ok:
+            context.user_data.clear()
+            try:
+                await query.edit_message_text("✅ ورود موفق.", reply_markup=main_menu())
+            except Exception:
+                await query.message.reply_text("✅ ورود موفق.", reply_markup=main_menu())
+        elif err == 'password_needed':
+            context.user_data['waiting_for_password'] = True
+            context.user_data['otp_code'] = ""
+            try:
+                await query.edit_message_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
+            except Exception:
+                await query.message.reply_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
+        else:
+            context.user_data['waiting_for_code'] = True
+            context.user_data['otp_code'] = ""
+            try:
+                await query.edit_message_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
+            except Exception:
+                await query.message.reply_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
+    elif query.data == "back":
+        context.user_data.clear()
+        await query.edit_message_text("بازگشت به منوی اصلی.", reply_markup=main_menu())
+    else:
+        await query.edit_message_text("دستور ناشناخته.", reply_markup=main_menu())
