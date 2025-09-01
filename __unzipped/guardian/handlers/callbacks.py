@@ -69,7 +69,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_set'] = ('view_threshold', base)
         await query.edit_message_text(f"مقدار جدید View Threshold برای @{base} را ارسال کن:", reply_markup=back_menu())
     elif query.data == "logs":
-        from utils.data import load_data
         d = load_data() or {}
         events = d.get('events', [])
         context.user_data['logs_offset'] = max(0, len(events) - 10)
@@ -77,7 +76,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         text = "📜 10 رخداد اخیر:\n" + ("\n".join(page) if page else "(خالی)")
         await query.edit_message_text(text, reply_markup=logs_nav_menu(has_prev=context.user_data['logs_offset']>0, has_next=False))
     elif query.data in ("logs_prev","logs_next"):
-        from utils.data import load_data
         d = load_data() or {}
         events = d.get('events', [])
         offset = int(context.user_data.get('logs_offset', 0))
@@ -103,49 +101,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             await query.message.reply_text("نام کاربری کانال هدف برای تست را بفرست (مثال: @name)", reply_markup=back_menu())
         return
-        # simulate direct rotation
-        from services.link_rotator import rotate_username
-        # Prechecks: session, channel, permissions (basic)
-        data = load_data() or {}
-        session_ok = data.get('session_status') == 'ok'
-        channels = data.get('channels', [])
-        if not session_ok:
-            msg = "⛔ سشن Telethon فعال نیست. ابتدا ورود را کامل کن."
-            try:
-                await query.edit_message_text(msg, reply_markup=main_menu())
-            except Exception:
-                await query.message.reply_text(msg, reply_markup=main_menu())
-            return
-        if not channels:
-            msg = "⛔ هیچ کانالی ثبت نشده. از گزینهٔ افزودن کانال استفاده کن."
-            try:
-                await query.edit_message_text(msg, reply_markup=main_menu())
-            except Exception:
-                await query.message.reply_text(msg, reply_markup=main_menu())
-            return
-        try:
-            await query.edit_message_text("⏳ تست ضداسپم: تلاش برای چرخش…", reply_markup=main_menu())
-        except Exception:
-            await query.message.reply_text("⏳ تست ضداسپم: تلاش برای چرخش…", reply_markup=main_menu())
-        result = await rotate_username(context, chat_id, base_username, trace_id=trace_id)
-        # telemetry: increment attacks
-        try:
-            d = load_data() or {}
-            d['attacks'] = int(d.get('attacks', 0)) + 1
-            save_data(d)
-        except Exception:
-            pass
-        if result.get('ok'):
-            msg = f"✅ چرخش موفق. trace_id={trace_id}"
-        else:
-            msg = f"❌ چرخش ناموفق: {result.get('error','unknown')}. trace_id={trace_id}"
-        try:
-            await query.edit_message_text(msg, reply_markup=main_menu())
-        except Exception:
-            await query.message.reply_text(msg, reply_markup=main_menu())
+        # rotation is handled in messages handler after channel is provided
     elif query.data == "simulate":
         # Inject synthetic join/view events to exercise detectors
-        from utils.data import load_data, save_data
+        
         from services.view_burst import ViewBurstDetector
         import time
         d = load_data() or {}

@@ -15,11 +15,20 @@ class ViewBurstDetector:
 
     def add(self, views:int, ts:float|None=None):
         ts = ts or time.time()
-        # baseline guard: first sample establishes baseline without triggering
+        # baseline/delta auto-detect for first sample:
+        # - If first value is small (<= threshold), treat as delta (accumulate)
+        # - If it's large, treat as absolute baseline (no trigger)
         if self._last_views is None:
-            self._last_views = views
-            self._prune(ts)
-            return False
+            if views <= self.threshold:
+                self.events.append((ts, views))
+                self.total += views
+                self._last_views = views
+                self._prune(ts)
+                return self.total >= self.threshold
+            else:
+                self._last_views = views
+                self._prune(ts)
+                return False
 
         if views <= 0:
             self._prune(ts)

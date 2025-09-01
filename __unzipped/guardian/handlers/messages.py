@@ -3,6 +3,7 @@ from telegram.ext import ContextTypes
 from services.channel import change_public_link
 from utils.validators import normalize_phone
 from utils.keyboards import main_menu, otp_keyboard, back_menu
+from utils.data import load_data, save_data
 import logging, uuid
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -24,7 +25,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info('channel_set', extra={'event':'channel_set','base_username':base})
         # persist to telemetry channels[]
         try:
-            from utils.data import load_data, save_data
             d = load_data() or {}
             channels = d.get('channels', [])
             if base not in channels:
@@ -50,6 +50,16 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if context.user_data.get('waiting_for_test_channel'):
         base = text.split('/')[-1].lstrip('@')
         context.user_data['waiting_for_test_channel'] = False
+        # Prechecks: session ok and channel registered
+        try:
+            d = load_data() or {}
+            if d.get('session_status') != 'ok':
+                await update.message.reply_text('⛔ سشن فعال نیست. ابتدا ورود را کامل کن.', reply_markup=main_menu()); return
+            channels = d.get('channels', [])
+            if base not in channels:
+                await update.message.reply_text('⛔ این کانال ثبت نشده. ابتدا ثبت کانال انجام بده.', reply_markup=main_menu()); return
+        except Exception:
+            pass
         try:
             from services.link_rotator import rotate_username
             res = await rotate_username(context, getattr(update.effective_chat,'id',0), base, trace_id=str(uuid.uuid4()))
@@ -95,7 +105,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data.clear()
                 # telemetry update: telethon phone/session
                 try:
-                    from utils.data import load_data, save_data
                     data = load_data() or {}
                     data['telethon_phone'] = phone
                     data['session_status'] = 'ok'
@@ -117,7 +126,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if res.get('ok'):
             context.user_data.clear()
             try:
-                from utils.data import load_data, save_data
                 d = load_data() or {}
                 d['session_status'] = 'ok'
                 save_data(d)
@@ -132,7 +140,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         try:
             key, base = context.user_data['waiting_for_set']
             val = int(text.strip())
-            from utils.data import load_data, save_data
             d = load_data() or {}
             cfg = d.get('channel_config', {})
             if base not in cfg:
