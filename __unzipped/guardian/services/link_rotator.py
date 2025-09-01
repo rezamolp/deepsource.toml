@@ -38,6 +38,8 @@ async def rotate_username(context, chat_id: int, base_username: str, trace_id: s
         # success: may be username or invite link string
         data['link_changes_success'] = int(data.get('link_changes_success', 0)) + 1
         data['last_rotation_link'] = new_link
+        import time
+        data['last_rotation_at'] = int(time.time())
         save_data(data)
         logger.info('rotation_ok', extra={'event':'rotation_ok','chat_id':chat_id,'new_link':'***','trace_id':trace_id})
         return {'ok': True, 'link': new_link}

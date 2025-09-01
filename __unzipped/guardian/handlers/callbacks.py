@@ -60,6 +60,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             await query.message.reply_text("⏳ تست ضداسپم: تلاش برای چرخش…", reply_markup=main_menu())
         result = await rotate_username(context, chat_id, base_username, trace_id=trace_id)
+        # telemetry: increment attacks
+        try:
+            d = load_data() or {}
+            d['attacks'] = int(d.get('attacks', 0)) + 1
+            save_data(d)
+        except Exception:
+            pass
         if result.get('ok'):
             msg = f"✅ چرخش موفق. trace_id={trace_id}"
         else:
