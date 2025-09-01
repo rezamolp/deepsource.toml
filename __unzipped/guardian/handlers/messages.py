@@ -6,6 +6,9 @@ from utils.keyboards import main_menu
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or '').strip()
+    if text in {"بازگشت", "back", "/back"}:
+        context.user_data.clear()
+        await update.message.reply_text('بازگشت به منوی اصلی.', reply_markup=main_menu()); return
     if context.user_data.get('waiting_for_channel'):
         base = text.split('/')[-1].lstrip('@')
         context.user_data['waiting_for_channel'] = False

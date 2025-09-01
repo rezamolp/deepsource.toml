@@ -10,6 +10,9 @@ def main_menu():
     ]
     return InlineKeyboardMarkup(keyboard)
 
+def back_menu():
+    return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
+
 def otp_keyboard():
     keyboard = []
     row = []

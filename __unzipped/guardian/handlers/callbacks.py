@@ -29,5 +29,8 @@ Telethon: {telethon_status}""",
     elif query.data == "add_account":
         context.user_data["waiting_for_phone"] = True
         await query.edit_message_text("شمارهٔ تلفن را بفرست (مثال: +98912...)", reply_markup=main_menu())
+    elif query.data == "back":
+        context.user_data.clear()
+        await query.edit_message_text("بازگشت به منوی اصلی.", reply_markup=main_menu())
     else:
         await query.edit_message_text("دستور ناشناخته.", reply_markup=main_menu())
