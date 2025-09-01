@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+pythonpath = "."
+addopts = "--maxfail=1 --disable-warnings -q"
+testpaths = ["tests"]
+
+[tool.coverage.report]
+fail_under = 80
