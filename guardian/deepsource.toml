@@ -28,7 +28,7 @@ enabled = true
 [analyzers.python]
 python_version = "3.9"
 
-# Exclude patterns
+# Exclude patterns for Guardian project
 exclude_patterns = [
     "**/__pycache__/**",
     "**/*.pyc",
@@ -37,38 +37,84 @@ exclude_patterns = [
     "**/env/**",
     "**/.env",
     "**/data.json",
-    "**/storage/migrations/**"
+    "**/storage/migrations/**",
+    "**/sessions/**",
+    "**/*.session",
+    "**/*.session-journal",
+    "**/logs/**",
+    "**/tmp/**",
+    "**/temp/**"
 ]
 
-# Test patterns
+# Test patterns for Guardian project
 test_patterns = [
     "**/test_*.py",
     "**/*_test.py",
-    "**/guardian_tests/**"
+    "**/guardian_tests/**",
+    "**/tests/**"
 ]
 
-# Custom rules for this project
+# Custom rules for Guardian Telegram Bot
 [[analyzers.python.rules]]
 name = "guardian-specific"
 enabled = true
-description = "Custom rules for Guardian bot"
+description = "Custom rules for Guardian Telegram Bot link rotation system"
 
-# Security rules
+# Security rules - Critical for Telegram bot
 [[analyzers.python.rules]]
 name = "security"
 enabled = true
 
-# Performance rules
+# Performance rules - Important for real-time operations
 [[analyzers.python.rules]]
 name = "performance"
 enabled = true
 
-# Code quality rules
+# Code quality rules - Maintain code standards
 [[analyzers.python.rules]]
 name = "antipatterns"
 enabled = true
 
-# Documentation rules
+# Documentation rules - Ensure proper documentation
 [[analyzers.python.rules]]
 name = "documentation"
 enabled = true
+
+# Error handling rules - Critical for bot reliability
+[[analyzers.python.rules]]
+name = "error-handling"
+enabled = true
+
+# Async/await rules - Important for Telegram API
+[[analyzers.python.rules]]
+name = "async"
+enabled = true
+
+# Logging rules - Ensure proper logging
+[[analyzers.python.rules]]
+name = "logging"
+enabled = true
+
+# Configuration for Guardian-specific analysis
+[analyzers.python.guardian]
+# Focus on Telegram API related issues
+telegram_api_checks = true
+# Check for proper error handling in async functions
+async_error_handling = true
+# Verify logging structure
+structured_logging = true
+# Check for security in session management
+session_security = true
+# Verify proper permission checking
+permission_validation = true
+
+# Ignore specific patterns for Guardian project
+[analyzers.python.ignore]
+# Ignore test files in production analysis
+test_files = true
+# Ignore migration files
+migration_files = true
+# Ignore session files
+session_files = true
+# Ignore environment files
+env_files = true
