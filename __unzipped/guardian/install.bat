@@ -22,6 +22,13 @@ for /r %%i in (*.pyc) do del /q "%%i"
 if exist .pytest_cache rd /s /q .pytest_cache
 if exist .mypy_cache rd /s /q .mypy_cache
 
+:: Build ID and file fingerprints
+echo 🔎 Computing BUILD_ID...
+set BUILD_ID=%DATE%_%TIME%
+echo BUILD_ID=%BUILD_ID%
+echo Python: %CD%\venv\Scripts\python.exe
+echo Main:   %CD%\main.py
+
 :: 4. ساخت .env اگر نبود
 if not exist .env (
   echo ⚠️  .env not found → copying from .env.example
@@ -39,8 +46,4 @@ venv\Scripts\python.exe -m pytest -v --maxfail=1 --disable-warnings
 
 :: 7. اجرای ربات
 echo 🤖 Starting Guardian Bot...
-echo Python: %CD%\venv\Scripts\python.exe
-echo Runner: %CD%\runner.py
-set BUILD_ID=%DATE%_%TIME%
-echo BUILD_ID=%BUILD_ID%
 venv\Scripts\python.exe runner.py

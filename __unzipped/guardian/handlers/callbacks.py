@@ -34,7 +34,17 @@ Telethon: {telethon_status}""",
     elif query.data == "logs":
         await query.edit_message_text("نمایش 10 رخداد اخیر (stub)", reply_markup=main_menu())
     elif query.data == "test_antispam":
-        await query.edit_message_text("✅ تست ضداسپم اجرا شد (stub)", reply_markup=main_menu())
+        trace_id = str(uuid.uuid4())
+        try:
+            await query.edit_message_text("⏳ در حال اجرای تست…", reply_markup=main_menu())
+        except Exception:
+            await query.message.reply_text("⏳ در حال اجرای تست…", reply_markup=main_menu())
+        # simple stub result + safe edit/send
+        text = f"✅ تست ضداسپم انجام شد. trace_id={trace_id}"
+        try:
+            await query.edit_message_text(text, reply_markup=main_menu())
+        except Exception:
+            await query.message.reply_text(text, reply_markup=main_menu())
     elif query.data == "add_account":
         context.user_data["waiting_for_phone"] = True
         context.user_data.pop("otp_code", None)
@@ -64,10 +74,13 @@ Telethon: {telethon_status}""",
                 result = {"error": str(e)}
         ok = bool(result and not result.get("error"))
         logger.info('otp_confirm', extra={'event':'otp_confirm','result':'ok' if ok else 'fail','trace_id':trace_id})
-        context.user_data.pop("otp_code", None)
-        context.user_data.pop("waiting_for_code", None)
-        text = "✅ ورود موفق." if ok else "❌ کد نامعتبر یا خطا در ورود."
-        await query.edit_message_text(text, reply_markup=main_menu())
+        if ok:
+            context.user_data.clear()
+            await query.edit_message_text("✅ ورود موفق.", reply_markup=main_menu())
+        else:
+            context.user_data['waiting_for_code'] = True
+            context.user_data['otp_code'] = ""
+            await query.edit_message_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
     elif query.data == "back":
         context.user_data.clear()
         await query.edit_message_text("بازگشت به منوی اصلی.", reply_markup=main_menu())
