@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from services.channel import change_public_link
 from utils.validators import normalize_phone
-from utils.keyboards import main_menu, otp_keyboard
+from utils.keyboards import main_menu, otp_keyboard, back_menu
 import logging, uuid
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -39,5 +39,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_code'] = True
         context.user_data['phone'] = phone
         logger.info('send_code_requested', extra={'event':'send_code_requested','trace_id':trace_id})
+        # Send code via telethon stub/real
+        try:
+            from services import telethon_manager
+            send_res = await telethon_manager.send_code(phone, trace_id=trace_id)
+            logger.info('send_code_result', extra={'event':'send_code_result','result':send_res})
+        except Exception as e:
+            logger.error('send_code_error', extra={'event':'send_code_error','error':str(e),'trace_id':trace_id})
         await update.message.reply_text('📱 شماره ذخیره شد. کد ورود را ارسال کن:', reply_markup=otp_keyboard()); return
     await update.message.reply_text('پیام دریافت شد.', reply_markup=main_menu())

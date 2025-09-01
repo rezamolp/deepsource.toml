@@ -7,6 +7,7 @@ from handlers.callbacks import button_handler
 from handlers.messages import handle_text
 from handlers.members import member_update
 from utils.logger import setup_logger
+from telegram import error as tg_error
 
 setup_logger()
 logger = logging.getLogger(__name__)
@@ -19,6 +20,20 @@ def main():
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(ChatMemberHandler(member_update, ChatMemberHandler.CHAT_MEMBER))
+
+    # Global error handler
+    async def on_error(update, context):
+        import traceback, uuid
+        trace_id = str(uuid.uuid4())
+        err = context.error
+        details = getattr(err, 'message', str(err))
+        logger.error('telegram_error', extra={'event':'error','trace_id':trace_id,'details':details})
+        try:
+            if update and getattr(update, 'effective_chat', None):
+                await context.bot.send_message(update.effective_chat.id, '❗ خطای موقت رخ داد. دوباره تلاش کنید.')
+        except Exception:
+            pass
+    app.add_error_handler(on_error)
 
     logger.info("bot_started", extra={"event":"bot_started"})
 

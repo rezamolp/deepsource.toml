@@ -15,6 +15,13 @@ echo 📦 Installing dependencies...
 venv\Scripts\python.exe -m pip install --upgrade pip
 venv\Scripts\python.exe -m pip install -r requirements.txt
 
+:: 3.1 Clean caches to avoid stale bytecode
+echo 🧹 Cleaning caches...
+for /r %%i in (__pycache__) do if exist "%%i" rd /s /q "%%i"
+for /r %%i in (*.pyc) do del /q "%%i"
+if exist .pytest_cache rd /s /q .pytest_cache
+if exist .mypy_cache rd /s /q .mypy_cache
+
 :: 4. ساخت .env اگر نبود
 if not exist .env (
   echo ⚠️  .env not found → copying from .env.example
@@ -32,4 +39,8 @@ venv\Scripts\python.exe -m pytest -v --maxfail=1 --disable-warnings
 
 :: 7. اجرای ربات
 echo 🤖 Starting Guardian Bot...
-python runner.py
+echo Python: %CD%\venv\Scripts\python.exe
+echo Runner: %CD%\runner.py
+set BUILD_ID=%DATE%_%TIME%
+echo BUILD_ID=%BUILD_ID%
+venv\Scripts\python.exe runner.py
