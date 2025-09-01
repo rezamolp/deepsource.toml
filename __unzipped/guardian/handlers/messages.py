@@ -30,6 +30,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             if base not in channels:
                 channels.append(base)
             d['channels'] = channels
+            # initialize per-channel config if missing
+            cfg = d.get('channel_config', {})
+            if base not in cfg:
+                cfg[base] = {'join_threshold': 10, 'join_window': 60, 'view_threshold': 50}
+            d['channel_config'] = cfg
             save_data(d)
         except Exception:
             pass
@@ -40,6 +45,19 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data['waiting_for_manual'] = False
         logger.info('manual_rotation', extra={'event':'manual_rotation','base_username':base})
         await update.message.reply_text(f'لینک تغییر کرد: @{base}', reply_markup=main_menu()); return
+
+    # Test anti-spam: ask for channel and rotate
+    if context.user_data.get('waiting_for_test_channel'):
+        base = text.split('/')[-1].lstrip('@')
+        context.user_data['waiting_for_test_channel'] = False
+        try:
+            from services.link_rotator import rotate_username
+            res = await rotate_username(context, getattr(update.effective_chat,'id',0), base, trace_id=str(uuid.uuid4()))
+            if res.get('ok'):
+                await update.message.reply_text(f'✅ چرخش موفق برای @{base}', reply_markup=main_menu()); return
+            await update.message.reply_text(f'❌ چرخش ناموفق برای @{base}: {res.get("error","unknown")}', reply_markup=main_menu()); return
+        except Exception as e:
+            await update.message.reply_text(f'❌ خطا: {e}', reply_markup=main_menu()); return
     if context.user_data.get('waiting_for_phone'):
         trace_id = str(uuid.uuid4())
         phone = normalize_phone(text)
@@ -108,3 +126,21 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text('✅ ورود با رمز 2FA موفق بود.', reply_markup=main_menu()); return
         await update.message.reply_text('❌ رمز 2FA نامعتبر. دوباره تلاش کن.', reply_markup=back_menu()); return
     await update.message.reply_text('پیام دریافت شد.', reply_markup=main_menu())
+
+    # Handle per-channel setting value entry
+    if context.user_data.get('waiting_for_set'):
+        try:
+            key, base = context.user_data['waiting_for_set']
+            val = int(text.strip())
+            from utils.data import load_data, save_data
+            d = load_data() or {}
+            cfg = d.get('channel_config', {})
+            if base not in cfg:
+                cfg[base] = {}
+            cfg[base][key] = val
+            d['channel_config'] = cfg
+            save_data(d)
+            context.user_data.pop('waiting_for_set', None)
+            await update.message.reply_text('✅ مقدار ذخیره شد.', reply_markup=main_menu()); return
+        except Exception:
+            await update.message.reply_text('❌ مقدار نامعتبر است. یک عدد صحیح بفرست.', reply_markup=main_menu()); return

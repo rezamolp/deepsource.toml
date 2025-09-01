@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from utils.data import load_data, save_data
 from services.telethon_manager import get_status
-from utils.keyboards import main_menu, otp_keyboard, back_menu
+from utils.keyboards import main_menu, otp_keyboard, back_menu, channel_settings_menu, per_channel_settings_menu
 import logging, uuid
 
 antispam_enabled = True
@@ -48,6 +48,26 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "settings":
         context.user_data["waiting_for_settings"] = True
         await query.edit_message_text("مقادیر جدید تنظیمات را ارسال کن (مثال: join=10, view=50)", reply_markup=back_menu())
+    elif query.data == "channel_settings":
+        d = load_data() or {}
+        chs = d.get('channels', [])
+        await query.edit_message_text("یکی از کانال‌ها را انتخاب کن:", reply_markup=channel_settings_menu(chs))
+    elif query.data.startswith("cs_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['cs_base'] = base
+        await query.edit_message_text(f"تنظیمات @{base}:", reply_markup=per_channel_settings_menu(base))
+    elif query.data.startswith("csj_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('join_threshold', base)
+        await query.edit_message_text(f"مقدار جدید Join Threshold برای @{base} را ارسال کن:", reply_markup=back_menu())
+    elif query.data.startswith("csw_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('join_window', base)
+        await query.edit_message_text(f"مقدار جدید Join Window برای @{base} را ارسال کن (ثانیه):", reply_markup=back_menu())
+    elif query.data.startswith("csvt_"):
+        base = query.data.split("_",1)[-1]
+        context.user_data['waiting_for_set'] = ('view_threshold', base)
+        await query.edit_message_text(f"مقدار جدید View Threshold برای @{base} را ارسال کن:", reply_markup=back_menu())
     elif query.data == "logs":
         from utils.data import load_data
         d = load_data() or {}
@@ -56,8 +76,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text, reply_markup=main_menu())
     elif query.data == "test_antispam":
         trace_id = str(uuid.uuid4())
-        chat_id = context.bot_data.get('channel_id') or getattr(update.effective_chat, 'id', 0)
-        base_username = context.bot_data.get('base_username') or 'guardian'
+        # ask for channel username to rotate
+        context.user_data['waiting_for_test_channel'] = True
+        try:
+            await query.edit_message_text("نام کاربری کانال هدف برای تست را بفرست (مثال: @name)", reply_markup=back_menu())
+        except Exception:
+            await query.message.reply_text("نام کاربری کانال هدف برای تست را بفرست (مثال: @name)", reply_markup=back_menu())
+        return
         # simulate direct rotation
         from services.link_rotator import rotate_username
         # Prechecks: session, channel, permissions (basic)
