@@ -6,7 +6,14 @@ from config import API_ID, API_HASH
 
 try:
     from telethon import TelegramClient
-    from telethon.errors import SessionPasswordNeededError, PhoneCodeInvalidError, PhoneNumberInvalidError, FloodWaitError
+    from telethon.errors import (
+        SessionPasswordNeededError,
+        PhoneCodeInvalidError,
+        PhoneCodeExpiredError,
+        PhoneNumberInvalidError,
+        PhoneNumberBannedError,
+        FloodWaitError,
+    )
 except Exception:  # Telethon may not be available at build time
     TelegramClient = None  # type: ignore
     class SessionPasswordNeededError(Exception):
@@ -14,6 +21,10 @@ except Exception:  # Telethon may not be available at build time
     class PhoneCodeInvalidError(Exception):
         pass
     class PhoneNumberInvalidError(Exception):
+        pass
+    class PhoneNumberBannedError(Exception):
+        pass
+    class PhoneCodeExpiredError(Exception):
         pass
     class FloodWaitError(Exception):
         def __init__(self, seconds: int = 0): self.seconds = seconds
@@ -75,6 +86,9 @@ async def send_code(phone: str, *, trace_id: str | None = None, user_id: str | N
     except PhoneNumberInvalidError:
         logger.error("send_code_invalid_phone", extra={"event":"send_code","trace_id":trace_id,"reason":"phone_invalid"})
         return {"error": "phone_invalid"}
+    except PhoneNumberBannedError:
+        logger.error("send_code_banned", extra={"event":"send_code","trace_id":trace_id,"reason":"number_banned"})
+        return {"error": "number_banned"}
     except Exception as e:
         logger.error("send_code_error", extra={"event":"send_code","trace_id":trace_id,"reason":str(e)})
         return {"error": "unknown"}
@@ -102,6 +116,9 @@ async def confirm_code(phone: str, code: str, *, trace_id: str | None = None):
     except PhoneCodeInvalidError:
         logger.error("confirm_code_invalid", extra={"event":"confirm_code","trace_id":trace_id,"reason":"code_invalid"})
         return {"error": "code_invalid"}
+    except PhoneCodeExpiredError:
+        logger.error("confirm_code_expired", extra={"event":"confirm_code","trace_id":trace_id,"reason":"code_expired"})
+        return {"error": "code_expired"}
     except FloodWaitError as e:
         logger.error("confirm_code_flood", extra={"event":"confirm_code","trace_id":trace_id,"reason":"flood_wait","wait_seconds": getattr(e, 'seconds', 0)})
         return {"error": "flood_wait", "wait_seconds": getattr(e, 'seconds', 0)}
