@@ -1,7 +1,8 @@
 import re
 import phonenumbers
+import os
 
-DEFAULT_REGION = "IR"
+DEFAULT_REGION = os.getenv("DEFAULT_REGION", "IR").strip() or "IR"
 
 def normalize_phone(raw: str) -> str | None:
     if not raw:

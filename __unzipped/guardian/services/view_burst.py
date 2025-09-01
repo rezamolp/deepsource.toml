@@ -7,12 +7,19 @@ class ViewBurstDetector:
         self.threshold = threshold
         self.events = deque()
         self.total = 0
+    def _prune(self, now: float):
+        while self.events and (now - self.events[0][0]) > self.window_seconds:
+            _, v = self.events.popleft()
+            self.total -= v
+
     def add(self, views:int, ts:float|None=None):
         ts = ts or time.time()
-        self.events.append((ts,views))
-        if views <= 0 or views >= self.threshold:
+        if views <= 0:
+            self._prune(ts)
             return False
+        # append then prune window consistently
+        self.events.append((ts, views))
         self.total += views
-        while self.events and ts - self.events[0][0] > self.window_seconds:
-            _,v=self.events.popleft(); self.total-=v
-        return self.total>self.threshold
+        self._prune(ts)
+        # inclusive threshold: trigger when total >= threshold
+        return self.total >= self.threshold
