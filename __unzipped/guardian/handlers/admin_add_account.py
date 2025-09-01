@@ -9,13 +9,34 @@ async def handle_phone_text(message, state):
     phone = normalize_phone((getattr(message, 'text', '') or '').strip())
     if not phone:
         await message.answer("شماره معتبر نیست. مثال: +989123456789")
-        attempts = (await state.get_data()).get('attempts', 0) + 1
-        await state.update_data(attempts=attempts)
+        # FSM compatibility shim
+        attempts = 0
+        try:
+            data = await state.get_data()
+            attempts = int(data.get('attempts', 0)) + 1
+            await state.update_data(attempts=attempts)
+        except Exception:
+            prev = getattr(state, 'attempts', 0)
+            attempts = int(prev) + 1
+            try:
+                setattr(state, 'attempts', attempts)
+            except Exception:
+                pass
         if attempts >= MAX_ATTEMPTS:
             await message.answer("❌ تلاش‌ها به پایان رسید. بعداً تلاش کن.")
-            await state.clear()
+            try:
+                await state.clear()
+            except Exception:
+                pass
         return
-    await state.update_data(phone=phone, attempts=0)
+    try:
+        await state.update_data(phone=phone, attempts=0)
+    except Exception:
+        try:
+            setattr(state, 'phone', phone)
+            setattr(state, 'attempts', 0)
+        except Exception:
+            pass
     await message.answer("کد ورود را ارسال کنید:")
 
 async def handle_code_text(message, state):
@@ -23,11 +44,26 @@ async def handle_code_text(message, state):
     if not code:
         await message.answer("کد نامعتبر است.")
         return
-    await state.update_data(code=code)
+    try:
+        await state.update_data(code=code)
+    except Exception:
+        try:
+            setattr(state, 'code', code)
+        except Exception:
+            pass
     await message.answer("اگر رمز دومرحله‌ای داری وارد کن، وگرنه بزن /skip")
 
 async def handle_password_text(message, state):
     password = (getattr(message, 'text', '') or '').strip()
-    await state.update_data(password=password)
+    try:
+        await state.update_data(password=password)
+    except Exception:
+        try:
+            setattr(state, 'password', password)
+        except Exception:
+            pass
     await message.answer("اکانت اضافه شد.")
-    await state.clear()
+    try:
+        await state.clear()
+    except Exception:
+        pass
