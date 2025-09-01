@@ -89,4 +89,22 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 context.user_data['waiting_for_password'] = True
                 await update.message.reply_text('🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.', reply_markup=back_menu()); return
             await update.message.reply_text('❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.', reply_markup=otp_keyboard()); return
+
+    # 2FA password entry
+    if context.user_data.get('waiting_for_password'):
+        pwd = text.strip()
+        trace_id = context.user_data.get('trace_id') or str(uuid.uuid4())
+        from services import telethon_manager
+        res = await telethon_manager.confirm_password(pwd, trace_id=trace_id)
+        if res.get('ok'):
+            context.user_data.clear()
+            try:
+                from utils.data import load_data, save_data
+                d = load_data() or {}
+                d['session_status'] = 'ok'
+                save_data(d)
+            except Exception:
+                pass
+            await update.message.reply_text('✅ ورود با رمز 2FA موفق بود.', reply_markup=main_menu()); return
+        await update.message.reply_text('❌ رمز 2FA نامعتبر. دوباره تلاش کن.', reply_markup=back_menu()); return
     await update.message.reply_text('پیام دریافت شد.', reply_markup=main_menu())

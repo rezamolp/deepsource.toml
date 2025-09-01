@@ -49,7 +49,11 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_settings"] = True
         await query.edit_message_text("مقادیر جدید تنظیمات را ارسال کن (مثال: join=10, view=50)", reply_markup=back_menu())
     elif query.data == "logs":
-        await query.edit_message_text("نمایش 10 رخداد اخیر (stub)", reply_markup=main_menu())
+        from utils.data import load_data
+        d = load_data() or {}
+        events = d.get('events', [])[-10:]
+        text = "📜 10 رخداد اخیر:\n" + ("\n".join(events) if events else "(خالی)")
+        await query.edit_message_text(text, reply_markup=main_menu())
     elif query.data == "test_antispam":
         trace_id = str(uuid.uuid4())
         chat_id = context.bot_data.get('channel_id') or getattr(update.effective_chat, 'id', 0)
@@ -94,6 +98,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(msg, reply_markup=main_menu())
         except Exception:
             await query.message.reply_text(msg, reply_markup=main_menu())
+    elif query.data == "simulate":
+        # Inject a small simulated sequence (note: no external effect)
+        from utils.data import load_data, save_data
+        d = load_data() or {}
+        ev = d.get('events', [])
+        ev.append("simulate:start")
+        d['events'] = ev[-100:]
+        save_data(d)
+        await query.edit_message_text("🎛️ شبیه‌سازی انجام شد (نمونه).", reply_markup=main_menu())
     elif query.data == "add_account":
         context.user_data["waiting_for_phone"] = True
         context.user_data.pop("otp_code", None)
@@ -119,6 +132,16 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await query.edit_message_text(f"کد: {masked}", reply_markup=otp_keyboard())
         except Exception:
             await query.message.reply_text(f"کد: {masked}", reply_markup=otp_keyboard())
+    elif query.data == "otp_backspace":
+        buf = context.user_data.get("otp_code", "")
+        buf = buf[:-1] if buf else ""
+        context.user_data["otp_code"] = buf
+        logger.info('otp_digit_delete', extra={'event':'otp_digit_delete','len':len(buf)})
+        txt = f"کد: {buf}" if buf else "کد: "
+        try:
+            await query.edit_message_text(txt, reply_markup=otp_keyboard())
+        except Exception:
+            await query.message.reply_text(txt, reply_markup=otp_keyboard())
     elif query.data == "otp_confirm":
         code = context.user_data.get("otp_code", "")
         phone = context.user_data.get("phone")

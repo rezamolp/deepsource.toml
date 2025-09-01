@@ -41,11 +41,18 @@ async def rotate_username(context, chat_id: int, base_username: str, trace_id: s
         data['last_rotation_link'] = new_link
         import time
         data['last_rotation_at'] = int(time.time())
+        # append event
+        ev = data.get('events', [])
+        ev.append('rotation_ok')
+        data['events'] = ev[-100:]
         save_data(data)
         logger.info('rotation_ok', extra={'event':'rotation_ok','chat_id':chat_id,'new_link':'***','trace_id':trace_id})
         return {'ok': True, 'link': new_link}
     except Exception as e:
         data['link_changes_fail'] = int(data.get('link_changes_fail', 0)) + 1
+        ev = data.get('events', [])
+        ev.append('rotation_fail')
+        data['events'] = ev[-100:]
         save_data(data)
         logger.error('rotation_fail', extra={'event':'rotation_fail','chat_id':chat_id,'reason':str(e),'trace_id':trace_id})
         return {'error': str(e)}

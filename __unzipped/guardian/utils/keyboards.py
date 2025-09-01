@@ -5,7 +5,7 @@ def main_menu():
         [InlineKeyboardButton("📊 وضعیت ضداسپم", callback_data="status")],
         [InlineKeyboardButton("⚙️ تغییر تنظیمات", callback_data="settings")],
         [InlineKeyboardButton("📜 لاگ آخرین رخدادها", callback_data="logs")],
-        [InlineKeyboardButton("🚨 تست ضداسپم", callback_data="test_antispam")],
+        [InlineKeyboardButton("🚨 تست ضداسپم", callback_data="test_antispam"), InlineKeyboardButton("🎛️ شبیه‌سازی", callback_data="simulate")],
         [InlineKeyboardButton("➕ افزودن اکانت Telethon", callback_data="add_account")],
         [InlineKeyboardButton("➕ افزودن کانال", callback_data="add_channel")],
         [InlineKeyboardButton("➕ افزودن ادمین", callback_data="add_admin")]
@@ -26,6 +26,7 @@ def otp_keyboard():
     if row:
         keyboard.append(row)
     keyboard.append([InlineKeyboardButton("✅ تایید", callback_data="otp_confirm"),
+                     InlineKeyboardButton("⌫ حذف", callback_data="otp_backspace"),
                      InlineKeyboardButton("✉️ ارسال کد به‌صورت پیام", callback_data="otp_text"),
                      InlineKeyboardButton("🔙 بازگشت", callback_data="back")])
     return InlineKeyboardMarkup(keyboard)

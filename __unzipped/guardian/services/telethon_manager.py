@@ -125,3 +125,16 @@ async def confirm_code(phone: str, code: str, *, trace_id: str | None = None):
     except Exception as e:
         logger.error("confirm_code_error", extra={"event":"confirm_code","trace_id":trace_id,"reason":str(e)})
         return {"error": "unknown"}
+
+async def confirm_password(password: str, *, trace_id: str | None = None):
+    client = await _get_client()
+    if client is None:
+        logger.error("confirm_password_failed", extra={"event":"confirm_password","trace_id":trace_id,"reason":"telethon_missing"})
+        return {"error": "telethon_missing"}
+    try:
+        await client.sign_in(password=password)
+        logger.info("confirm_password_ok", extra={"event":"confirm_password","trace_id":trace_id})
+        return {"ok": True}
+    except Exception as e:
+        logger.error("confirm_password_error", extra={"event":"confirm_password","trace_id":trace_id,"reason":str(e)})
+        return {"error": "unknown"}
