@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from services.channel import change_public_link
 from utils.validators import normalize_phone
-from handlers.callbacks import main_menu
+from utils.keyboards import main_menu
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     text = (update.message.text or '').strip()

@@ -2,11 +2,12 @@ import time
 from collections import deque
 from config import SHORT_WINDOW, LONG_WINDOW, JOIN_LIMIT
 from services.channel import change_public_link
+from services.antispam_lock import acquire as acquire_lock
 
 join_times = deque()
 antispam_enabled = True
 
-async def check_new_member(context, channel_id, base_username, phone):
+async def check_new_member(context, channel_id, base_username):
     global join_times, antispam_enabled
     if not antispam_enabled or not channel_id:
         return
@@ -21,10 +22,12 @@ async def check_new_member(context, channel_id, base_username, phone):
     long_count = len(join_times)
 
     if short_count >= JOIN_LIMIT or long_count >= JOIN_LIMIT:
-        await change_public_link(context, channel_id, base_username, phone)
+        if not acquire_lock(channel_id, 'join'):
+            return
+        await change_public_link(channel_id, base_username)
         await context.bot.send_message(
             chat_id=context.bot_data.get("admin_id"),
-            text=f"⚠️ ضداسپم فعال شد! {short_count if short_count >= JOIN_LIMIT else long_count} عضو اضافه شدند."
+            text=f"⚠️ ضداسپم فعال شد! {short_count if short_count >= JOIN_LIMIT else long_count} عضو اضافه شدند.",
         )
         join_times.clear()
 

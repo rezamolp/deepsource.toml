@@ -2,7 +2,7 @@ import time
 from collections import deque
 
 class ViewBurstDetector:
-    def __init__(self, window_seconds=60, threshold=10):
+    def __init__(self, window_seconds=60, threshold=50):
         self.window_seconds = window_seconds
         self.threshold = threshold
         self.events = deque()

@@ -1,8 +1,9 @@
 import os
+import sys
 import subprocess
 import time
 
-WATCHED_DIRS = ["services", "handlers", "utils", "tests"]
+WATCHED_DIRS = ["services", "handlers", "utils", "guardian_tests"]
 PROCESS = None
 
 def run_bot():
@@ -10,8 +11,7 @@ def run_bot():
     if PROCESS:
         PROCESS.terminate()
     print("🚀 اجرای ربات...")
-    PROCESS = import sys
-PROCESS = subprocess.Popen([sys.executable, 'main.py'])
+    PROCESS = subprocess.Popen([sys.executable, 'main.py'])
 
 def watch():
     mtimes = {}

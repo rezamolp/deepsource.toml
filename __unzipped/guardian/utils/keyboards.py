@@ -2,13 +2,11 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 def main_menu():
     keyboard = [
-        [InlineKeyboardButton("📊 وضعیت ربات", callback_data="status")],
-        [InlineKeyboardButton("➕ ثبت کانال", callback_data="set_channel")],
-        [InlineKeyboardButton("🔄 تغییر لینک دستی", callback_data="manual_link")],
-        [InlineKeyboardButton("➕ افزودن اکانت Telethon", callback_data="add_account")],
-        [InlineKeyboardButton("➕ افزودن ادمین", callback_data="add_admin")],
-        [InlineKeyboardButton("🛡 ضداسپم فعال/غیرفعال", callback_data="toggle_antispam")],
-        [InlineKeyboardButton("🔙 بازگشت", callback_data="back")]
+        [InlineKeyboardButton("📊 وضعیت ضداسپم", callback_data="status")],
+        [InlineKeyboardButton("⚙️ تغییر تنظیمات", callback_data="settings")],
+        [InlineKeyboardButton("📜 لاگ آخرین رخدادها", callback_data="logs")],
+        [InlineKeyboardButton("🚨 تست ضداسپم", callback_data="test_antispam")],
+        [InlineKeyboardButton("➕ افزودن اکانت Telethon", callback_data="add_account")]
     ]
     return InlineKeyboardMarkup(keyboard)
 

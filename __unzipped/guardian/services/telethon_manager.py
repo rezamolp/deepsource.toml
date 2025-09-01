@@ -15,8 +15,8 @@ async def init_client():
     return None
 
 async def change_channel_link(channel_id: int, new_username: str):
-    logger.info("change_channel_link_called", extra={"channel_id": channel_id, "username": new_username})
-    return {"channel_id": channel_id, "username": new_username}
+    logger.info("change_channel_link_called", extra={"chat_id": channel_id, "new_username": new_username})
+    return {"chat_id": channel_id, "new_username": new_username}
 
     class SessionPasswordNeededError(Exception):
         pass

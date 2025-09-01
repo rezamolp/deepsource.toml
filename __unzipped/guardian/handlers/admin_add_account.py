@@ -1,37 +1,33 @@
-# LEGACY: Aiogram handler, kept for reference only
-from aiogram import Router, types
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.fsm.context import FSMContext
-from utils.logger import setup_logger
+from telegram import Update
+from telegram.ext import ContextTypes
+from utils.keyboards import main_menu
+from utils.validators import normalize_phone
 
-router = Router()
-logger = setup_logger()
+MAX_ATTEMPTS = 3
 
-class AddAccount(StatesGroup):
-    waiting_for_phone = State()
-    waiting_for_code = State()
-    waiting_for_password = State()
-
-@router.message(AddAccount.waiting_for_phone)
-async def handle_phone_text(message: types.Message, state: FSMContext):
-    phone = message.text.strip()
-    if not phone.startswith('+98') and not phone.startswith('0098') and not phone.startswith('09'):
+async def handle_phone_text(message, state):
+    phone = normalize_phone((getattr(message, 'text', '') or '').strip())
+    if not phone:
         await message.answer("شماره معتبر نیست. مثال: +989123456789")
+        attempts = (await state.get_data()).get('attempts', 0) + 1
+        await state.update_data(attempts=attempts)
+        if attempts >= MAX_ATTEMPTS:
+            await message.answer("❌ تلاش‌ها به پایان رسید. بعداً تلاش کن.")
+            await state.clear()
         return
-    await state.update_data(phone=phone)
+    await state.update_data(phone=phone, attempts=0)
     await message.answer("کد ورود را ارسال کنید:")
-    await state.set_state(AddAccount.waiting_for_code)
 
-@router.message(AddAccount.waiting_for_code)
-async def handle_code_text(message: types.Message, state: FSMContext):
-    code = message.text.strip()
+async def handle_code_text(message, state):
+    code = (getattr(message, 'text', '') or '').strip()
+    if not code:
+        await message.answer("کد نامعتبر است.")
+        return
     await state.update_data(code=code)
     await message.answer("اگر رمز دومرحله‌ای داری وارد کن، وگرنه بزن /skip")
-    await state.set_state(AddAccount.waiting_for_password)
 
-@router.message(AddAccount.waiting_for_password)
-async def handle_password_text(message: types.Message, state: FSMContext):
-    password = message.text.strip()
+async def handle_password_text(message, state):
+    password = (getattr(message, 'text', '') or '').strip()
     await state.update_data(password=password)
     await message.answer("اکانت اضافه شد.")
     await state.clear()

@@ -1,24 +1,14 @@
 import signal
 import logging
-from logging.handlers import RotatingFileHandler
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, ChatMemberHandler, filters
 from config import BOT_TOKEN, ADMIN_ID
 from handlers.commands import start
 from handlers.callbacks import button_handler
 from handlers.messages import handle_text
 from handlers.members import member_update
+from utils.logger import setup_logger
 
-# تنظیم لاگر برای نمایش در CMD و ذخیره در فایل با محدودیت حجم 1MB
-log_handler = RotatingFileHandler("bot.log", maxBytes=1_000_000, backupCount=3, encoding="utf-8")
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        log_handler,
-        logging.StreamHandler()
-    ]
-)
-
+setup_logger()
 logger = logging.getLogger(__name__)
 
 def main():
@@ -30,16 +20,10 @@ def main():
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
     app.add_handler(ChatMemberHandler(member_update, ChatMemberHandler.CHAT_MEMBER))
 
-    logger.info("🤖 ربات ضداسپم اجرا شد...")
-    app.run_polling(stop_signals=[signal.SIGTERM, signal.SIGINT])
+    logger.info("bot_started", extra={"event":"bot_started"})
 
-if __name__ == "__main__":
-    main()
-
-# Phase4: add healthz endpoint
-import threading, http.server, socketserver
-
-def _start_healthz():
+    # Healthcheck server
+    import threading, http.server, socketserver
     class Handler(http.server.SimpleHTTPRequestHandler):
         def do_GET(self):
             if self.path == '/healthz':
@@ -51,4 +35,7 @@ def _start_healthz():
                 self.end_headers()
     threading.Thread(target=lambda: socketserver.TCPServer(('0.0.0.0',8080),Handler).serve_forever(),daemon=True).start()
 
-_start_healthz()
+    app.run_polling(stop_signals=[signal.SIGTERM, signal.SIGINT])
+
+if __name__ == "__main__":
+    main()

@@ -9,6 +9,5 @@ async def member_update(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if status == "member":
             channel_id = context.bot_data.get('channel_id')
             base_username = context.bot_data.get('base_username')
-            phone = context.user_data.get('phone')
-            if channel_id and base_username and phone:
-                await check_new_member(context, channel_id, base_username, phone)
+            if channel_id and base_username:
+                await check_new_member(context, channel_id, base_username)

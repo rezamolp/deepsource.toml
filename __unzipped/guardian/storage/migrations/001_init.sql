@@ -5,13 +5,3 @@ CREATE TABLE IF NOT EXISTS events (
     ts REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_events_chat_kind_ts ON events(chat_id, kind, ts);
-
-CREATE INDEX IF NOT EXISTS idx_events_ckts ON events(chat_id, kind, ts);
-
-CREATE INDEX IF NOT EXISTS idx_events_ckts ON events(chat_id, kind, ts);
-
-CREATE INDEX IF NOT EXISTS idx_events_ckts ON events(chat_id, kind, ts);
-
-CREATE INDEX IF NOT EXISTS idx_events_ckts ON events(chat_id, kind, ts);
-
-CREATE INDEX IF NOT EXISTS idx_events_ckts ON events(chat_id,kind,ts);

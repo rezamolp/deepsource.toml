@@ -12,8 +12,10 @@ class JsonFormatter(logging.Formatter):
                          'exc_info','exc_text','stack_info','lineno','funcName','created','msecs',
                          'relativeCreated','thread','threadName','process','processName'): 
                 log_record[k] = v
-            #
-            log_record.update(record.extra)
+        # Merge structured extras if present
+        extra_payload = getattr(record, 'extra', None)
+        if isinstance(extra_payload, dict):
+            log_record.update(extra_payload)
         return json.dumps(log_record)
 
 def setup_logger():
