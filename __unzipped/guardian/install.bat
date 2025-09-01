@@ -12,8 +12,8 @@ call venv\Scripts\activate
 
 :: 3. نصب وابستگی‌ها
 echo 📦 Installing dependencies...
-pip install --upgrade pip
-pip install -r requirements.txt
+venv\Scripts\python.exe -m pip install --upgrade pip
+venv\Scripts\python.exe -m pip install -r requirements.txt
 
 :: 4. ساخت .env اگر نبود
 if not exist .env (
@@ -28,7 +28,7 @@ sqlite3 guardian.db < storage/migrations/001_init.sql
 
 :: 6. اجرای تست‌ها
 echo 🧪 Running tests...
-pytest -v --maxfail=1 --disable-warnings
+venv\Scripts\python.exe -m pytest -v --maxfail=1 --disable-warnings
 
 :: 7. اجرای ربات
 echo 🤖 Starting Guardian Bot...
