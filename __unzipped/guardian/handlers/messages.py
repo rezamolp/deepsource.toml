@@ -64,6 +64,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
             ok = not err
             if ok:
                 context.user_data.clear()
+                # telemetry update: telethon phone/session
+                try:
+                    from utils.data import load_data, save_data
+                    data = load_data() or {}
+                    data['telethon_phone'] = phone
+                    data['session_status'] = 'ok'
+                    save_data(data)
+                except Exception:
+                    pass
                 await update.message.reply_text('✅ ورود موفق.', reply_markup=main_menu()); return
             if err == 'password_needed':
                 context.user_data['waiting_for_password'] = True
