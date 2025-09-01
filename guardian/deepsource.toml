@@ -1,0 +1,74 @@
+version = 1
+
+[[analyzers]]
+name = "python"
+enabled = true
+
+[[analyzers]]
+name = "secrets"
+enabled = true
+
+[[analyzers]]
+name = "dockerfile"
+enabled = true
+
+[[analyzers]]
+name = "yaml"
+enabled = true
+
+[[analyzers]]
+name = "json"
+enabled = true
+
+[[analyzers]]
+name = "toml"
+enabled = true
+
+# Python specific configurations
+[analyzers.python]
+python_version = "3.9"
+
+# Exclude patterns
+exclude_patterns = [
+    "**/__pycache__/**",
+    "**/*.pyc",
+    "**/.pytest_cache/**",
+    "**/venv/**",
+    "**/env/**",
+    "**/.env",
+    "**/data.json",
+    "**/storage/migrations/**"
+]
+
+# Test patterns
+test_patterns = [
+    "**/test_*.py",
+    "**/*_test.py",
+    "**/guardian_tests/**"
+]
+
+# Custom rules for this project
+[[analyzers.python.rules]]
+name = "guardian-specific"
+enabled = true
+description = "Custom rules for Guardian bot"
+
+# Security rules
+[[analyzers.python.rules]]
+name = "security"
+enabled = true
+
+# Performance rules
+[[analyzers.python.rules]]
+name = "performance"
+enabled = true
+
+# Code quality rules
+[[analyzers.python.rules]]
+name = "antipatterns"
+enabled = true
+
+# Documentation rules
+[[analyzers.python.rules]]
+name = "documentation"
+enabled = true

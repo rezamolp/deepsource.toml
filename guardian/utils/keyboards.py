@@ -3,6 +3,8 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 def main_menu():
     keyboard = [
         [InlineKeyboardButton("📊 وضعیت ربات", callback_data="status")],
+        [InlineKeyboardButton("🔍 بررسی سلامت", callback_data="health_check")],
+        [InlineKeyboardButton("📈 آمار چرخش", callback_data="rotation_stats")],
         [InlineKeyboardButton("➕ ثبت کانال", callback_data="set_channel")],
         [InlineKeyboardButton("🔄 تغییر لینک دستی", callback_data="manual_link")],
         [InlineKeyboardButton("➕ افزودن اکانت Telethon", callback_data="add_account")],
