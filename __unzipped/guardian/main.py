@@ -27,7 +27,9 @@ def main():
         trace_id = str(uuid.uuid4())
         err = context.error
         details = getattr(err, 'message', str(err))
-        logger.error('telegram_error', extra={'event':'error','trace_id':trace_id,'details':details})
+        http_status = getattr(getattr(err, 'response', None), 'status_code', None)
+        err_type = type(err).__name__ if err else 'Unknown'
+        logger.error('telegram_error', extra={'event':'error','trace_id':trace_id,'error_type': err_type, 'http_status': http_status, 'details':details})
         try:
             if update and getattr(update, 'effective_chat', None):
                 await context.bot.send_message(update.effective_chat.id, '❗ خطای موقت رخ داد. دوباره تلاش کنید.')

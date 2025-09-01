@@ -22,12 +22,20 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if query.data == "status":
         telethon_status = "آماده" if get_status() == "ready" else "تنظیم‌نشده"
-        await query.edit_message_text(
-            f"""وضعیت:
-ضداسپم: {'فعال' if antispam_enabled else 'غیرفعال'}
-Telethon: {telethon_status}""", 
-            reply_markup=main_menu()
+        status_card = (
+            "📊 وضعیت ضداسپم\n"
+            f"- ضداسپم: {'فعال' if antispam_enabled else 'غیرفعال'}\n"
+            f"- Telethon: {telethon_status}\n"
+            f"- Join: 10 / 60s\n"
+            f"- View: 50 / 60s (3 پست)\n"
+            f"- آخرین rotation: n/a\n"
+            f"- Link mode: n/a\n"
+            f"- Recent bursts: n/a\n"
         )
+        try:
+            await query.edit_message_text(status_card, reply_markup=main_menu())
+        except Exception:
+            await query.message.reply_text(status_card, reply_markup=main_menu())
     elif query.data == "settings":
         context.user_data["waiting_for_settings"] = True
         await query.edit_message_text("مقادیر جدید تنظیمات را ارسال کن (مثال: join=10, view=50)", reply_markup=back_menu())
@@ -72,11 +80,16 @@ Telethon: {telethon_status}""",
                 result = await telethon_manager.confirm_code(phone, code, trace_id=trace_id)
             except Exception as e:
                 result = {"error": str(e)}
-        ok = bool(result and not result.get("error"))
-        logger.info('otp_confirm', extra={'event':'otp_confirm','result':'ok' if ok else 'fail','trace_id':trace_id})
+        err = result.get("error") if isinstance(result, dict) else None
+        ok = not err
+        logger.info('otp_confirm', extra={'event':'otp_confirm','result':'ok' if ok else 'fail','reason': err or '', 'trace_id':trace_id})
         if ok:
             context.user_data.clear()
             await query.edit_message_text("✅ ورود موفق.", reply_markup=main_menu())
+        elif err == 'password_needed':
+            context.user_data['waiting_for_password'] = True
+            context.user_data['otp_code'] = ""
+            await query.edit_message_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
         else:
             context.user_data['waiting_for_code'] = True
             context.user_data['otp_code'] = ""

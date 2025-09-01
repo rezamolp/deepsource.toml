@@ -20,6 +20,7 @@ except Exception:  # Telethon may not be available at build time
 
 _client: Optional["TelegramClient"] = None
 _phone_hash_by_phone: Dict[str, str] = {}
+_phone_hash_by_trace: Dict[str, str] = {}
 
 async def _get_client() -> Optional["TelegramClient"]:
     global _client
@@ -53,7 +54,7 @@ async def change_channel_link(channel_id: int, new_username: str):
         pass
 
 # OTP / login flow using Telethon (falls back gracefully if not available)
-async def send_code(phone: str, *, trace_id: str | None = None):
+async def send_code(phone: str, *, trace_id: str | None = None, user_id: str | None = None):
     client = await _get_client()
     if client is None:
         logger.error("send_code_failed", extra={"event":"send_code","phone":"***","trace_id":trace_id,"reason":"telethon_missing"})
@@ -64,6 +65,8 @@ async def send_code(phone: str, *, trace_id: str | None = None):
         phone_code_hash = getattr(sent, 'phone_code_hash', None)
         if phone_code_hash:
             _phone_hash_by_phone[phone] = phone_code_hash
+            if trace_id:
+                _phone_hash_by_trace[trace_id] = phone_code_hash
         logger.info("send_code_ok", extra={"event":"send_code","trace_id":trace_id})
         return {"ok": True}
     except FloodWaitError as e:
@@ -85,7 +88,7 @@ async def confirm_code(phone: str, code: str, *, trace_id: str | None = None):
         logger.error("confirm_code_failed", extra={"event":"confirm_code","trace_id":trace_id,"reason":"short_code"})
         return {"error": "invalid_code"}
     try:
-        phone_code_hash = _phone_hash_by_phone.get(phone)
+        phone_code_hash = _phone_hash_by_trace.get(trace_id or "") or _phone_hash_by_phone.get(phone)
         # Telethon sign_in can work without explicit hash if last send_code_request used, but pass if we have
         if phone_code_hash:
             await client.sign_in(phone=phone, code=code, phone_code_hash=phone_code_hash)
