@@ -57,6 +57,15 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["waiting_for_phone"] = True
         context.user_data.pop("otp_code", None)
         await query.edit_message_text("شمارهٔ تلفن را بفرست (مثال: +98912...)", reply_markup=back_menu())
+    elif query.data == "add_channel":
+        context.user_data["waiting_for_channel"] = True
+        await query.edit_message_text("نام کاربری کانال (@name یا t.me/...) را بفرست.", reply_markup=back_menu())
+    elif query.data == "add_admin":
+        context.user_data["waiting_for_admin"] = True
+        await query.edit_message_text("شناسهٔ عددی یا @username ادمین جدید را بفرست.", reply_markup=back_menu())
+    elif query.data == "otp_text":
+        context.user_data["waiting_for_code"] = True
+        await query.edit_message_text("کد را به صورت پیام متنی ارسال کن (۴ تا ۸ رقم)", reply_markup=otp_keyboard())
     elif query.data and query.data.startswith("otp_"):
         digit = query.data.split("_",1)[-1]
         buf = context.user_data.get("otp_code", "")
@@ -64,7 +73,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             buf += digit
         context.user_data["otp_code"] = buf
         logger.info('otp_digit_append', extra={'event':'otp_digit_append','len':len(buf)})
-        masked = "*"*len(buf)
+        masked = buf  # نمایش مستقیم ارقام طبق درخواست، ولی لاگ فقط length دارد
         try:
             await query.edit_message_text(f"کد: {masked}", reply_markup=otp_keyboard())
         except Exception:
@@ -72,7 +81,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "otp_confirm":
         code = context.user_data.get("otp_code", "")
         phone = context.user_data.get("phone")
-        trace_id = str(uuid.uuid4())
+        trace_id = context.user_data.get("trace_id") or str(uuid.uuid4())
         from services import telethon_manager
         result = {"error":"no_phone"} if not phone else None
         if phone:
@@ -85,15 +94,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         logger.info('otp_confirm', extra={'event':'otp_confirm','result':'ok' if ok else 'fail','reason': err or '', 'trace_id':trace_id})
         if ok:
             context.user_data.clear()
-            await query.edit_message_text("✅ ورود موفق.", reply_markup=main_menu())
+            try:
+                await query.edit_message_text("✅ ورود موفق.", reply_markup=main_menu())
+            except Exception:
+                await query.message.reply_text("✅ ورود موفق.", reply_markup=main_menu())
         elif err == 'password_needed':
             context.user_data['waiting_for_password'] = True
             context.user_data['otp_code'] = ""
-            await query.edit_message_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
+            try:
+                await query.edit_message_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
+            except Exception:
+                await query.message.reply_text("🔐 رمز دو مرحله‌ای لازم است. رمز را ارسال کن.", reply_markup=back_menu())
         else:
             context.user_data['waiting_for_code'] = True
             context.user_data['otp_code'] = ""
-            await query.edit_message_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
+            try:
+                await query.edit_message_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
+            except Exception:
+                await query.message.reply_text("❌ کد نامعتبر یا خطا در ورود. دوباره تلاش کن.", reply_markup=otp_keyboard())
     elif query.data == "back":
         context.user_data.clear()
         await query.edit_message_text("بازگشت به منوی اصلی.", reply_markup=main_menu())
