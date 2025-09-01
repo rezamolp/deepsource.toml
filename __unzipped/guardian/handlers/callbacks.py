@@ -2,7 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from utils.data import load_data, save_data
 from services.telethon_manager import get_status
-from utils.keyboards import main_menu, otp_keyboard, back_menu, channel_settings_menu, per_channel_settings_menu
+from utils.keyboards import main_menu, otp_keyboard, back_menu, channel_settings_menu, per_channel_settings_menu, logs_nav_menu
 import logging, uuid
 
 antispam_enabled = True
@@ -71,9 +71,29 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "logs":
         from utils.data import load_data
         d = load_data() or {}
-        events = d.get('events', [])[-10:]
-        text = "📜 10 رخداد اخیر:\n" + ("\n".join(events) if events else "(خالی)")
-        await query.edit_message_text(text, reply_markup=main_menu())
+        events = d.get('events', [])
+        context.user_data['logs_offset'] = max(0, len(events) - 10)
+        page = events[-10:]
+        text = "📜 10 رخداد اخیر:\n" + ("\n".join(page) if page else "(خالی)")
+        await query.edit_message_text(text, reply_markup=logs_nav_menu(has_prev=context.user_data['logs_offset']>0, has_next=False))
+    elif query.data in ("logs_prev","logs_next"):
+        from utils.data import load_data
+        d = load_data() or {}
+        events = d.get('events', [])
+        offset = int(context.user_data.get('logs_offset', 0))
+        if query.data == 'logs_prev':
+            offset = max(0, offset - 10)
+        else:
+            offset = min(max(0, len(events)-10), offset + 10)
+        context.user_data['logs_offset'] = offset
+        page = events[offset:offset+10]
+        text = "📜 رخدادها:\n" + ("\n".join(page) if page else "(خالی)")
+        has_prev = offset > 0
+        has_next = offset + 10 < len(events)
+        try:
+            await query.edit_message_text(text, reply_markup=logs_nav_menu(has_prev, has_next))
+        except Exception:
+            await query.message.reply_text(text, reply_markup=logs_nav_menu(has_prev, has_next))
     elif query.data == "test_antispam":
         trace_id = str(uuid.uuid4())
         # ask for channel username to rotate
@@ -124,14 +144,22 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         except Exception:
             await query.message.reply_text(msg, reply_markup=main_menu())
     elif query.data == "simulate":
-        # Inject a small simulated sequence (note: no external effect)
+        # Inject synthetic join/view events to exercise detectors
         from utils.data import load_data, save_data
+        from services.view_burst import ViewBurstDetector
+        import time
         d = load_data() or {}
         ev = d.get('events', [])
         ev.append("simulate:start")
+        vb = ViewBurstDetector(window_seconds=60, threshold=50)
+        now = time.time()
+        # simulate oscillation and positive deltas
+        for v in (10, 20, 15, 30, 55):
+            vb.add(v, ts=now); now += 5
+        ev.append(f"simulate:trigger={vb.total>=vb.threshold}")
         d['events'] = ev[-100:]
         save_data(d)
-        await query.edit_message_text("🎛️ شبیه‌سازی انجام شد (نمونه).", reply_markup=main_menu())
+        await query.edit_message_text("🎛️ شبیه‌سازی انجام شد و رخداد ثبت شد.", reply_markup=main_menu())
     elif query.data == "add_account":
         context.user_data["waiting_for_phone"] = True
         context.user_data.pop("otp_code", None)

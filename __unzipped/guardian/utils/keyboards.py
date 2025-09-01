@@ -27,6 +27,16 @@ def per_channel_settings_menu(base: str):
         [InlineKeyboardButton("🔙 بازگشت", callback_data="channel_settings")],
     ])
 
+def logs_nav_menu(has_prev: bool, has_next: bool):
+    row = []
+    if has_prev:
+        row.append(InlineKeyboardButton("⬅️ جدیدتر", callback_data="logs_prev"))
+    if has_next:
+        row.append(InlineKeyboardButton("قدیمی‌تر ➡️", callback_data="logs_next"))
+    keyboard = [row] if row else []
+    keyboard.append([InlineKeyboardButton("🔙 بازگشت", callback_data="back")])
+    return InlineKeyboardMarkup(keyboard)
+
 def back_menu():
     return InlineKeyboardMarkup([[InlineKeyboardButton("🔙 بازگشت", callback_data="back")]])
 
