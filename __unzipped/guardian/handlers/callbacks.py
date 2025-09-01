@@ -29,12 +29,13 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         attacks = int(data.get('attacks', 0))
         tele_phone = data.get('telethon_phone', 'n/a')
         last_link = data.get('last_rotation_link', 'n/a')
+        session_ok = data.get('session_status', 'n/a')
         status_card = (
             "📊 وضعیت ضداسپم\n"
             f"- ضداسپم: {'فعال' if antispam_enabled else 'غیرفعال'}\n"
-            f"- Telethon: {telethon_status} (phone={tele_phone})\n"
-            f"- Join: 10 / 60s\n"
-            f"- View: 50 / 60s (3 پست)\n"
+            f"- Telethon: {telethon_status} (phone={tele_phone}, session={session_ok})\n"
+            f"- Join threshold/window: 10 / 60s\n"
+            f"- View threshold/window: 50 / 60s (3 پست)\n"
             f"- کانال‌ها: {len(channels)}\n"
             f"- آخرین لینک/rotation: {last_link}\n"
             f"- link_changes: ok={success} / fail={fail}\n"
@@ -55,6 +56,24 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         base_username = context.bot_data.get('base_username') or 'guardian'
         # simulate direct rotation
         from services.link_rotator import rotate_username
+        # Prechecks: session, channel, permissions (basic)
+        data = load_data() or {}
+        session_ok = data.get('session_status') == 'ok'
+        channels = data.get('channels', [])
+        if not session_ok:
+            msg = "⛔ سشن Telethon فعال نیست. ابتدا ورود را کامل کن."
+            try:
+                await query.edit_message_text(msg, reply_markup=main_menu())
+            except Exception:
+                await query.message.reply_text(msg, reply_markup=main_menu())
+            return
+        if not channels:
+            msg = "⛔ هیچ کانالی ثبت نشده. از گزینهٔ افزودن کانال استفاده کن."
+            try:
+                await query.edit_message_text(msg, reply_markup=main_menu())
+            except Exception:
+                await query.message.reply_text(msg, reply_markup=main_menu())
+            return
         try:
             await query.edit_message_text("⏳ تست ضداسپم: تلاش برای چرخش…", reply_markup=main_menu())
         except Exception:

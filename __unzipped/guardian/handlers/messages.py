@@ -22,6 +22,17 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         base = text.split('/')[-1].lstrip('@')
         context.user_data['waiting_for_channel'] = False
         logger.info('channel_set', extra={'event':'channel_set','base_username':base})
+        # persist to telemetry channels[]
+        try:
+            from utils.data import load_data, save_data
+            d = load_data() or {}
+            channels = d.get('channels', [])
+            if base not in channels:
+                channels.append(base)
+            d['channels'] = channels
+            save_data(d)
+        except Exception:
+            pass
         await update.message.reply_text(f'کانال ثبت شد: @{base}', reply_markup=main_menu()); return
     if context.user_data.get('waiting_for_manual'):
         base = text.split('/')[-1].lstrip('@')

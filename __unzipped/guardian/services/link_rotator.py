@@ -16,9 +16,10 @@ async def robust_notify_admin(admin_id: int, trace_id: str, bot, reason: str, re
     logging.error('admin_notify_failed', extra={'error': str(last_err), 'trace_id': trace_id})
     return False
 
-async def notify_admin_on_fallback(admin_id: int, trace_id: str, bot):
+async def notify_admin_on_fallback(admin_id: int, trace_id: str, bot, attempts: int | None = None, *args):
     try:
-        await bot.send_message(admin_id, f'⚠️ Guardian: همه تلاش‌های چرخش ناموفق بود. trace_id={trace_id}')
+        suffix = f' (attempts={attempts})' if isinstance(attempts, int) else ''
+        await bot.send_message(admin_id, f'⚠️ Guardian: همه تلاش‌های چرخش ناموفق بود{suffix}. trace_id={trace_id}')
         return True
     except Exception as e:
         logging.error('failed_notify_admin', extra={'error': str(e), 'trace_id': trace_id})
