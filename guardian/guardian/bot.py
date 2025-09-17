@@ -43,8 +43,15 @@ def settings_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Join Threshold", callback_data="set_join_threshold")],
         [InlineKeyboardButton(text="Join Window", callback_data="set_join_window")],
         [InlineKeyboardButton(text="View Threshold", callback_data="set_view_threshold")],
+        [InlineKeyboardButton(text="View Window", callback_data="set_view_window")],
         [InlineKeyboardButton(text="Target Chat ID", callback_data="set_target_chat")],
         [InlineKeyboardButton(text="بازگشت", callback_data="back_home")],
+    ])
+
+
+def back_kb() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="بازگشت", callback_data="back_home")]
     ])
 
 
@@ -70,8 +77,10 @@ class AdminBot:
             join_threshold = int(self.repo.get_setting("join_threshold", "10") or 10)
             join_window = int(self.repo.get_setting("join_window_seconds", "60") or 60)
             view_threshold = int(self.repo.get_setting("view_threshold", "50") or 50)
+            view_window = int(self.repo.get_setting("view_window_seconds", "60") or 60)
             rotation_base = self.repo.get_setting("rotation_base", "guardian") or "guardian"
             rotation_suffix_max = int(self.repo.get_setting("rotation_suffix_max", "100") or 100)
+            target_chat_id = self.repo.get_setting("target_chat_id", "—") or "—"
             last_rot = self.repo.last_rotations(1)
             last_text = "—"
             if last_rot:
@@ -81,8 +90,9 @@ class AdminBot:
                 (
                     "📊 وضعیت ضداسپم\n"
                     f"Join: {join_threshold} / {join_window}s\n"
-                    f"View: {view_threshold} / 60s (3 پست آخر)\n"
+                    f"View: {view_threshold} / {view_window}s (3 پست آخر)\n"
                     f"base: {rotation_base}, max: {rotation_suffix_max}\n"
+                    f"chat_id: {target_chat_id}\n"
                     f"آخرین رخداد: {last_text}"
                 ), reply_markup=admin_menu_kb()
             )
@@ -93,8 +103,9 @@ class AdminBot:
             await cb.message.edit_text("⚙️ تنظیمات را انتخاب کنید:", reply_markup=settings_kb())
             await cb.answer()
 
-        async def _prompt_int(cb: CallbackQuery, key: str, title: str) -> None:
-            await cb.message.edit_text(f"{title} را وارد کنید (≥1):")
+        async def _prompt_int(cb: CallbackQuery, key: str, title: str, allow_negative: bool = False) -> None:
+            suffix = "(عدد صحیح)" if allow_negative else "(≥1)"
+            await cb.message.edit_text(f"{title} را وارد کنید {suffix}:", reply_markup=back_kb())
             self.repo.set_setting("_await_key", key)
 
         @self.dp.callback_query(F.data == "set_join_threshold")
@@ -112,13 +123,19 @@ class AdminBot:
             await _prompt_int(cb, "view_threshold", "View Threshold")
             await cb.answer()
 
+        @self.dp.callback_query(F.data == "set_view_window")
+        async def set_vw(cb: CallbackQuery) -> None:
+            await _prompt_int(cb, "view_window_seconds", "View Window")
+            await cb.answer()
+
         @self.dp.callback_query(F.data == "set_target_chat")
         async def set_target_chat(cb: CallbackQuery) -> None:
-            await _prompt_int(cb, "target_chat_id", "Target Chat ID")
+            await _prompt_int(cb, "target_chat_id", "Target Chat ID", allow_negative=True)
             await cb.answer()
 
         @self.dp.callback_query(F.data == "back_home")
-        async def back_home(cb: CallbackQuery) -> None:
+        async def back_home(cb: CallbackQuery, state: FSMContext) -> None:
+            await state.clear()
             await cb.message.edit_text("منوی اصلی:", reply_markup=admin_menu_kb())
             await cb.answer()
 
@@ -129,10 +146,18 @@ class AdminBot:
             awaiting_key = self.repo.get_setting("_await_key")
             if awaiting_key:
                 text = (message.text or "").strip()
-                if not text.isdigit() or int(text) < 1:
-                    await message.answer("❌ مقدار باید بزرگ‌تر از صفر باشد.")
-                    return
-                self.repo.set_setting(awaiting_key, text)
+                if awaiting_key == "target_chat_id":
+                    try:
+                        value = int(text)
+                    except ValueError:
+                        await message.answer("❌ مقدار باید عدد صحیح باشد.", reply_markup=admin_menu_kb())
+                        return
+                    self.repo.set_setting(awaiting_key, str(value))
+                else:
+                    if not text.isdigit() or int(text) < 1:
+                        await message.answer("❌ مقدار باید بزرگ‌تر از صفر باشد.", reply_markup=admin_menu_kb())
+                        return
+                    self.repo.set_setting(awaiting_key, text)
                 self.repo.set_setting("_await_key", "")
                 await message.answer("✅ ذخیره شد.", reply_markup=admin_menu_kb())
 
@@ -160,7 +185,7 @@ class AdminBot:
         async def telethon_add(cb: CallbackQuery, state: FSMContext) -> None:
             await state.set_state(TelethonLoginFSM.phone)
             await state.update_data(attempts=0, cooldown_until=0)
-            await cb.message.answer("شماره تلفن اکانت Telethon را وارد کنید:")
+            await cb.message.answer("شماره تلفن اکانت Telethon را وارد کنید:", reply_markup=back_kb())
             await cb.answer()
 
         @self.dp.message(TelethonLoginFSM.phone)
@@ -174,7 +199,7 @@ class AdminBot:
                 await message.answer("❌ خطا در ارسال کد. دوباره تلاش کنید.")
                 return
             await state.set_state(TelethonLoginFSM.code)
-            await message.answer("کد تایید را وارد کنید:")
+            await message.answer("کد تایید را وارد کنید:", reply_markup=back_kb())
 
         @self.dp.message(TelethonLoginFSM.code)
         async def telethon_get_code(message: Message, state: FSMContext) -> None:
@@ -200,7 +225,7 @@ class AdminBot:
             if res.reason == "2fa_needed":
                 await state.set_state(TelethonLoginFSM.password)
                 await state.update_data(attempts=attempts, cooldown_until=cooldown_until)
-                await message.answer("رمز 2FA را وارد کنید:")
+                await message.answer("رمز 2FA را وارد کنید:", reply_markup=back_kb())
                 return
             attempts += 1
             await state.update_data(attempts=attempts)
