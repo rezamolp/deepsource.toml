@@ -14,7 +14,7 @@ class Settings:
     admin_fallback_chat_id: Optional[int]
     api_id: int
     api_hash: str
-    target_chat_id: int
+    target_chat_id: Optional[int]
 
     join_threshold: int = 10
     join_window_seconds: int = 60
@@ -69,8 +69,6 @@ def load_settings() -> Settings:
         raise RuntimeError("API_ID and API_HASH are required for Telethon")
 
     target_chat_id = _int_env("TARGET_CHAT_ID")
-    if target_chat_id is None:
-        raise RuntimeError("TARGET_CHAT_ID is required")
 
     join_threshold = _int_env("JOIN_THRESHOLD", 10) or 10
     join_window_seconds = _int_env("JOIN_WINDOW_SECONDS", 60) or 60

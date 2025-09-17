@@ -27,18 +27,22 @@ class JoinMonitor:
 
 
 class ViewMonitor:
-    def __init__(self, telethon: TelegramClient, anti_spam: AntiSpamService, chat_id: int, poll_seconds: int = 10) -> None:
+    def __init__(self, telethon: TelegramClient, anti_spam: AntiSpamService, poll_seconds: int = 10) -> None:
         self.telethon = telethon
         self.anti_spam = anti_spam
-        self.chat_id = chat_id
         self.poll_seconds = poll_seconds
         self._last_views: List[int] = []
 
     async def start(self) -> None:
         while True:
             try:
+                chat_id = self.anti_spam.get_current_chat_id()
+                if not chat_id:
+                    await asyncio.sleep(self.poll_seconds)
+                    continue
+                entity = await self.telethon.get_input_entity(chat_id)
                 history = await self.telethon(GetHistoryRequest(
-                    peer=self.chat_id,
+                    peer=entity,
                     limit=3,
                     offset_date=None,
                     offset_id=0,
@@ -72,17 +76,21 @@ class ViewMonitor:
 
 
 class JoinPoller:
-    def __init__(self, telethon: TelegramClient, anti_spam: AntiSpamService, chat_id: int, poll_seconds: int = 5) -> None:
+    def __init__(self, telethon: TelegramClient, anti_spam: AntiSpamService, poll_seconds: int = 5) -> None:
         self.telethon = telethon
         self.anti_spam = anti_spam
-        self.chat_id = chat_id
         self.poll_seconds = poll_seconds
         self._last_count: Optional[int] = None
 
     async def start(self) -> None:
         while True:
             try:
-                full = await self.telethon(GetFullChannelRequest(channel=self.chat_id))
+                chat_id = self.anti_spam.get_current_chat_id()
+                if not chat_id:
+                    await asyncio.sleep(self.poll_seconds)
+                    continue
+                entity = await self.telethon.get_input_entity(chat_id)
+                full = await self.telethon(GetFullChannelRequest(channel=entity))
                 full_chat = full.full_chat
                 count = getattr(full_chat, "participants_count", None) or getattr(full_chat, "subscribers", None)
                 if isinstance(count, int):

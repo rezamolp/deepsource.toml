@@ -66,16 +66,29 @@ class AntiSpamService:
             await self._notify_admin(f"⏳ خطا در چرخش لینک: {ex}\ntrace_id={trace_id}")
             return None
 
+    def get_current_chat_id(self) -> Optional[int]:
+        # Prefer dynamic value from settings if present
+        value = self.repo.get_setting("target_chat_id")
+        if value and value.strip().lstrip("-").isdigit():
+            try:
+                return int(value)
+            except ValueError:
+                pass
+        return self.chat_id
+
     async def handle_join(self, count: int) -> None:
+        chat_id = self.get_current_chat_id()
+        if chat_id is None:
+            return
         trace_id = generate_trace_id()
-        self.repo.prune_events(self.chat_id, "join", self.thresholds.join_window_seconds)
-        self.repo.add_event(self.chat_id, "join", count, trace_id)
-        total = self.repo.window_count(self.chat_id, "join", self.thresholds.join_window_seconds)
+        self.repo.prune_events(chat_id, "join", self.thresholds.join_window_seconds)
+        self.repo.add_event(chat_id, "join", count, trace_id)
+        total = self.repo.window_count(chat_id, "join", self.thresholds.join_window_seconds)
 
         # Burst if total >= threshold or "exactly threshold at once"
         if total >= self.thresholds.join_threshold or count >= self.thresholds.join_threshold:
             # Concurrency guard 2s simulated by one lock; join and view share same guard key 'rotation'
-            async with self.guard.acquire(self.chat_id, "rotation"):
+            async with self.guard.acquire(chat_id, "rotation"):
                 now = time.monotonic()
                 if now - self._last_rotation_at < 2.0:
                     # Suppress duplicate rotation within 2 seconds window
@@ -96,12 +109,15 @@ class AntiSpamService:
                 )
 
     async def handle_view_growth(self, growth: int) -> None:
+        chat_id = self.get_current_chat_id()
+        if chat_id is None:
+            return
         trace_id = generate_trace_id()
-        self.repo.prune_events(self.chat_id, "view", self.thresholds.view_window_seconds)
-        self.repo.add_event(self.chat_id, "view", growth, trace_id)
-        total = self.repo.window_count(self.chat_id, "view", self.thresholds.view_window_seconds)
+        self.repo.prune_events(chat_id, "view", self.thresholds.view_window_seconds)
+        self.repo.add_event(chat_id, "view", growth, trace_id)
+        total = self.repo.window_count(chat_id, "view", self.thresholds.view_window_seconds)
         if total >= self.thresholds.view_threshold or growth >= self.thresholds.view_threshold:
-            async with self.guard.acquire(self.chat_id, "rotation"):
+            async with self.guard.acquire(chat_id, "rotation"):
                 now = time.monotonic()
                 if now - self._last_rotation_at < 2.0:
                     return

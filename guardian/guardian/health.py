@@ -13,8 +13,12 @@ async def run_health_server(host: str, port: int) -> None:
     app.add_routes([web.get("/healthz", health_handler)])
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, host=host, port=port)
-    await site.start()
+    try:
+        site = web.TCPSite(runner, host=host, port=port)
+        await site.start()
+    except OSError:
+        # Port already in use; degrade gracefully
+        return
     # Keep running
     while True:
         await asyncio.sleep(3600)

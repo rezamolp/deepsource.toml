@@ -43,6 +43,7 @@ def settings_kb() -> InlineKeyboardMarkup:
         [InlineKeyboardButton(text="Join Threshold", callback_data="set_join_threshold")],
         [InlineKeyboardButton(text="Join Window", callback_data="set_join_window")],
         [InlineKeyboardButton(text="View Threshold", callback_data="set_view_threshold")],
+        [InlineKeyboardButton(text="Target Chat ID", callback_data="set_target_chat")],
         [InlineKeyboardButton(text="بازگشت", callback_data="back_home")],
     ])
 
@@ -109,6 +110,11 @@ class AdminBot:
         @self.dp.callback_query(F.data == "set_view_threshold")
         async def set_vt(cb: CallbackQuery) -> None:
             await _prompt_int(cb, "view_threshold", "View Threshold")
+            await cb.answer()
+
+        @self.dp.callback_query(F.data == "set_target_chat")
+        async def set_target_chat(cb: CallbackQuery) -> None:
+            await _prompt_int(cb, "target_chat_id", "Target Chat ID")
             await cb.answer()
 
         @self.dp.callback_query(F.data == "back_home")

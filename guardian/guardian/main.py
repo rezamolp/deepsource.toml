@@ -64,8 +64,8 @@ async def main_async() -> None:
     )
 
     # Monitors
-    view_monitor = ViewMonitor(telethon=telethon_client, anti_spam=anti_spam, chat_id=settings.target_chat_id, poll_seconds=settings.view_monitor_poll_seconds)
-    join_poller = JoinPoller(telethon=telethon_client, anti_spam=anti_spam, chat_id=settings.target_chat_id)
+    view_monitor = ViewMonitor(telethon=telethon_client, anti_spam=anti_spam, poll_seconds=settings.view_monitor_poll_seconds)
+    join_poller = JoinPoller(telethon=telethon_client, anti_spam=anti_spam)
 
     # Admin bot
     admin_bot = AdminBot(bot=bot, repo=repo, admin_id=settings.admin_id, telethon_mgr=telethon_mgr, anti_spam=anti_spam)

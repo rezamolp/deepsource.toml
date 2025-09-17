@@ -33,11 +33,12 @@ class LinkRotationManager:
         """
         async with self._lock:
             client = await self._ensure_client()
+            entity = await client.get_input_entity(chat_id)
             # Try base first then 1..max_suffix
             for suffix in [None] + list(range(1, max_suffix + 1)):
                 try_username = base if suffix is None else f"{base}{suffix}"
                 try:
-                    await client(UpdateUsernameRequest(channel=chat_id, username=try_username))
+                    await client(UpdateUsernameRequest(channel=entity, username=try_username))
                     return f"https://t.me/{try_username}", "username"
                 except UsernameOccupiedError:
                     continue
@@ -47,8 +48,8 @@ class LinkRotationManager:
 
             # Fallback: remove username and create private invite link
             try:
-                await client(UpdateUsernameRequest(channel=chat_id, username=""))
+                await client(UpdateUsernameRequest(channel=entity, username=""))
             except Exception:
                 pass
-            invite = await client(ExportChatInviteRequest(peer=chat_id))
+            invite = await client(ExportChatInviteRequest(peer=entity))
             return invite.link, "invite"
