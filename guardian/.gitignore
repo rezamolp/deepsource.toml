@@ -1,0 +1,14 @@
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+*.log
+*.sqlite3
+*.db
+sessions/*.session*
+guardian.sqlite3
+guardian.db
+*.pyc
+dist/
+build/
+*.zip
