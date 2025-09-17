@@ -11,6 +11,7 @@ from .anti_spam import AntiSpamService, Thresholds
 from .bot import AdminBot
 from .config import load_settings
 from .db.base import create_session_factory
+from .db.models import Base  # ensure models loaded
 from .db.repo import Repository
 from .health import run_health_server
 from .logging import setup_logging
@@ -28,6 +29,8 @@ async def main_async() -> None:
 
     # DB
     SessionLocal, engine = create_session_factory(settings.database_url)
+    # Create tables at startup if not exist
+    Base.metadata.create_all(engine)
     repo = Repository(SessionLocal())
     # Persist rotation settings for runtime edits via admin bot
     repo.set_setting("rotation_base", settings.rotation_base)

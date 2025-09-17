@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from .base import Base, create_session_factory
+# Ensure models are imported so Base.metadata is populated
+from . import models  # noqa: F401
 from ..config import load_settings
 
 
