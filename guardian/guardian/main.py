@@ -65,7 +65,7 @@ async def main_async() -> None:
     join_poller = JoinPoller(telethon=telethon_client, anti_spam=anti_spam, chat_id=settings.target_chat_id)
 
     # Admin bot
-    admin_bot = AdminBot(bot=bot, repo=repo, admin_id=settings.admin_id, telethon_mgr=telethon_mgr)
+    admin_bot = AdminBot(bot=bot, repo=repo, admin_id=settings.admin_id, telethon_mgr=telethon_mgr, anti_spam=anti_spam)
 
     # Tasks
     tasks = [

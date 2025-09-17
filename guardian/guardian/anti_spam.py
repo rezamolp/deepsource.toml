@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from dataclasses import dataclass
+import time
 from typing import Optional
 
 from aiogram import Bot
@@ -42,6 +43,7 @@ class AntiSpamService:
         self.admin_fallback_chat_id = admin_fallback_chat_id
         self.thresholds = thresholds
         self.guard = ConcurrencyGuard()
+        self._last_rotation_at: float = 0.0
 
     async def _notify_admin(self, text: str) -> None:
         try:
@@ -74,6 +76,10 @@ class AntiSpamService:
         if total >= self.thresholds.join_threshold or count >= self.thresholds.join_threshold:
             # Concurrency guard 2s simulated by one lock; join and view share same guard key 'rotation'
             async with self.guard.acquire(self.chat_id, "rotation"):
+                now = time.monotonic()
+                if now - self._last_rotation_at < 2.0:
+                    # Suppress duplicate rotation within 2 seconds window
+                    return
                 msg = (
                     f"🚨 [Join-Burst Detected]\n"
                     f"تعداد: {total}\n"
@@ -81,6 +87,7 @@ class AntiSpamService:
                     f"trace_id={trace_id}"
                 )
                 await self._notify_admin(msg)
+                self._last_rotation_at = now
                 await self._rotate_link(
                     reason="join_burst",
                     trace_id=trace_id,
@@ -95,6 +102,9 @@ class AntiSpamService:
         total = self.repo.window_count(self.chat_id, "view", self.thresholds.view_window_seconds)
         if total >= self.thresholds.view_threshold or growth >= self.thresholds.view_threshold:
             async with self.guard.acquire(self.chat_id, "rotation"):
+                now = time.monotonic()
+                if now - self._last_rotation_at < 2.0:
+                    return
                 msg = (
                     f"🚨 [View-Burst Detected]\n"
                     f"پست‌های پایش: 3\n"
@@ -102,9 +112,22 @@ class AntiSpamService:
                     f"trace_id={trace_id}"
                 )
                 await self._notify_admin(msg)
+                self._last_rotation_at = now
                 await self._rotate_link(
                     reason="view_burst",
                     trace_id=trace_id,
                     base=self.repo.get_setting("rotation_base", default="guardian") or "guardian",
                     max_suffix=int(self.repo.get_setting("rotation_suffix_max", default="100") or 100),
                 )
+
+    async def simulate_test(self) -> None:
+        trace_id = "test123"
+        async with self.guard.acquire(self.chat_id, "rotation"):
+            now = time.monotonic()
+            self._last_rotation_at = now
+            await self._rotate_link(
+                reason="test",
+                trace_id=trace_id,
+                base=self.repo.get_setting("rotation_base", default="guardian") or "guardian",
+                max_suffix=int(self.repo.get_setting("rotation_suffix_max", default="100") or 100),
+            )

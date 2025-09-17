@@ -15,6 +15,7 @@ from tenacity import AsyncRetrying, stop_after_attempt, wait_fixed
 
 from .db.repo import Repository
 from .telethon_login import TelethonAccountManager
+from .anti_spam import AntiSpamService
 from .utils import mask
 
 
@@ -47,11 +48,12 @@ def settings_kb() -> InlineKeyboardMarkup:
 
 
 class AdminBot:
-    def __init__(self, bot: Bot, repo: Repository, admin_id: int, telethon_mgr: TelethonAccountManager) -> None:
+    def __init__(self, bot: Bot, repo: Repository, admin_id: int, telethon_mgr: TelethonAccountManager, anti_spam: Optional[AntiSpamService] = None) -> None:
         self.bot = bot
         self.repo = repo
         self.admin_id = admin_id
         self.telethon_mgr = telethon_mgr
+        self.anti_spam = anti_spam
         self.dp = Dispatcher(storage=MemoryStorage())
         self._register_handlers()
 
@@ -143,6 +145,8 @@ class AdminBot:
 
         @self.dp.callback_query(F.data == "test")
         async def test(cb: CallbackQuery) -> None:
+            if self.anti_spam:
+                await self.anti_spam.simulate_test()
             await cb.message.answer("✅ تست موفق: لینک کانال تغییر کرد.\ntrace_id=test123")
             await cb.answer()
 
@@ -174,7 +178,11 @@ class AdminBot:
             phone = data.get("phone", "")
             code = (message.text or "").strip()
             attempts = int(data.get("attempts", 0))
-            cooldown_until = int(data.get("cooldown_until", 0))
+            cooldown_until = float(data.get("cooldown_until", 0))
+            now = asyncio.get_event_loop().time()
+            if cooldown_until and now < cooldown_until:
+                await message.answer("⏳ مسیر قفل است. لطفاً بعداً تلاش کنید.")
+                return
             if attempts >= 3:
                 await message.answer("⏳ مسیر قفل شد. لطفا 60 ثانیه منتظر بمانید.")
                 return
@@ -191,7 +199,7 @@ class AdminBot:
             attempts += 1
             await state.update_data(attempts=attempts)
             if attempts >= 3:
-                await state.update_data(cooldown_until=asyncio.get_event_loop().time() + 60)
+                await state.update_data(cooldown_until=now + 60)
                 await message.answer("⏳ سه بار اشتباه. مسیر 60 ثانیه قفل شد.")
             else:
                 await message.answer("❌ کد نامعتبر. دوباره تلاش کنید.")
@@ -204,6 +212,11 @@ class AdminBot:
             phone = data.get("phone", "")
             password = (message.text or "").strip()
             attempts = int(data.get("attempts", 0))
+            cooldown_until = float(data.get("cooldown_until", 0))
+            now = asyncio.get_event_loop().time()
+            if cooldown_until and now < cooldown_until:
+                await message.answer("⏳ مسیر قفل است. لطفاً بعداً تلاش کنید.")
+                return
             if attempts >= 3:
                 await message.answer("⏳ مسیر قفل شد. لطفا 60 ثانیه منتظر بمانید.")
                 return
@@ -215,7 +228,7 @@ class AdminBot:
             attempts += 1
             await state.update_data(attempts=attempts)
             if attempts >= 3:
-                await state.update_data(cooldown_until=asyncio.get_event_loop().time() + 60)
+                await state.update_data(cooldown_until=now + 60)
                 await message.answer("⏳ سه بار اشتباه. مسیر 60 ثانیه قفل شد.")
             else:
                 await message.answer("❌ رمز 2FA نامعتبر. دوباره تلاش کنید.")

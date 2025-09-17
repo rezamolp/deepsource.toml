@@ -1,197 +1,60 @@
-# Guardian Telegram Bot - Link Rotation System
+# Guardian Anti-Spam Bot for Telegram Channels
 
-## 🔧 مشکلات رفع شده
+Production-grade anti-spam for Telegram channels: detects join/view bursts and rotates the public link (username) automatically, falling back to a private invite link.
 
-### مشکلات بحرانی (Critical Issues)
+## Features
+- Join-burst and view-burst detection (defaults: Join 10/60s, View +50/60s on last 3 posts)
+- Username rotation `guardian` -> `guardian1..guardian100` -> private invite
+- Concurrency guard: single rotation per 2 seconds
+- Admin bot (aiogram) with status, settings, logs, test, Telethon login FSM
+- SQLite with SQLAlchemy; pruning old records; composite indexes
+- JSON logs to stdout; health server on :8080/healthz
+- Unit tests with pytest
 
-#### 1. **ROT-NOP** - چرخش موفق کاذب
-- **مشکل:** پیام موفقیت بدون تغییر واقعی لینک
-- **راه‌حل:** اضافه کردن راستی‌آزمایی بعد از هر چرخش
-- **فایل:** `services/telethon_manager.py` - تابع `verify_username_change`
+## Setup
 
-#### 2. **CHATID-MISMATCH** - شناسه کانال اشتباه
-- **مشکل:** استفاده از chat_id ادمین به جای id کانال
-- **راه‌حل:** حل دقیق کانال از username/link
-- **فایل:** `services/telethon_manager.py` - تابع `resolve_channel_entity`
+1) Create `.env` from example and fill values:
 
-#### 3. **API-CHOICE** - انتخاب API اشتباه
-- **مشکل:** استفاده از Bot API به جای Telethon
-- **راه‌حل:** استفاده انحصاری از Telethon برای تغییر لینک
-- **فایل:** `services/telethon_manager.py` - تابع `change_channel_link`
-
-### مشکلات مهم (Major Issues)
-
-#### 4. **PERM-MISSING** - عدم بررسی مجوزها
-- **مشکل:** عدم بررسی مجوز "تغییر اطلاعات"
-- **راه‌حل:** بررسی کامل مجوزها قبل از اقدام
-- **فایل:** `services/telethon_manager.py` - تابع `check_channel_permissions`
-
-#### 5. **USERNAME-OCC** - عدم مدیریت نام‌های اشغال شده
-- **مشکل:** شکست خاموش در صورت اشغال بودن نام
-- **راه‌حل:** حلقه پسوندها با مدیریت خطا
-- **فایل:** `services/channel.py` - تابع `_attempt_username_rotation`
-
-#### 6. **AWAIT-MISS** - عدم انتظار برای عملیات async
-- **مشکل:** عدم await برای callهای Telethon
-- **راه‌حل:** اطمینان از await تمام عملیات async
-- **فایل:** `services/telethon_manager.py`
-
-#### 7. **STATUS-FALSEPOS** - وضعیت کاذب
-- **مشکل:** گزارش موفقیت بر اساس تلِمتری داخلی
-- **راه‌حل:** خواندن وضعیت واقعی از تلگرام
-- **فایل:** `handlers/callbacks.py` - تابع `_handle_status_request`
-
-### مشکلات مشاهده‌پذیری (Observability Issues)
-
-#### 8. **LOG-GAPS** - لاگ‌های ناقص
-- **مشکل:** عدم ثبت reason دقیق شکست‌ها
-- **راه‌حل:** لاگ کامل با trace_id و reason
-- **فایل:** تمام سرویس‌ها
-
-## 🆕 ویژگی‌های جدید
-
-### 1. **ماتریس سلامت کانال**
-- بررسی کامل مجوزها
-- نمایش وضعیت Telethon
-- تشخیص مشکلات احتمالی
-
-### 2. **راستی‌آزمایی خودکار**
-- تأیید تغییر لینک از تلگرام
-- جلوگیری از موفقیت کاذب
-- گزارش دقیق وضعیت
-
-### 3. **آمار تفصیلی چرخش**
-- شمارش موفقیت‌ها و شکست‌ها
-- محاسبه نرخ موفقیت
-- ردیابی آخرین چرخش
-
-### 4. **سیستم اعلان پیشرفته**
-- اعلان‌های تفصیلی
-- retry mechanism
-- پیام‌های راهنما
-
-### 5. **مدیریت خطای جامع**
-- دسته‌بندی خطاها
-- راهنمایی برای رفع مشکل
-- لاگ‌های ساختاریافته
-
-## 🚀 نحوه استفاده
-
-### 1. تنظیم اولیه
 ```bash
-# نصب وابستگی‌ها
-pip install -r requirements.txt
-
-# تنظیم متغیرهای محیطی
 cp .env.example .env
-# ویرایش فایل .env
 ```
 
-### 2. تنظیم Telethon
-1. دکمه "افزودن اکانت Telethon" را بزنید
-2. شماره تلفن را وارد کنید
-3. کد تأیید را وارد کنید
+Required:
+- `BOT_TOKEN`, `ADMIN_ID`, `API_ID`, `API_HASH`, `TARGET_CHAT_ID`
 
-### 3. تنظیم کانال
-1. دکمه "ثبت کانال" را بزنید
-2. نام کاربری کانال را وارد کنید
-3. ماتریس سلامت را بررسی کنید
+2) Install dependencies:
 
-### 4. چرخش لینک
-1. دکمه "تغییر لینک دستی" را بزنید
-2. نام پایه را وارد کنید
-3. منتظر نتیجه باشید
-
-## 📊 نظارت و عیب‌یابی
-
-### دکمه‌های جدید
-- **بررسی سلامت:** تشخیص مشکلات سیستم
-- **آمار چرخش:** مشاهده عملکرد سیستم
-- **وضعیت ربات:** اطلاعات جامع وضعیت
-
-### لاگ‌های ساختاریافته
-```python
-logger.info("rotation_success", extra={
-    "channel_id": channel_id,
-    "new_username": new_username,
-    "trace_id": trace_id,
-    "verified": True
-})
-```
-
-### کدهای خطا
-- `permission_error`: مشکل مجوز
-- `username_occupied`: نام اشغال شده
-- `verification_failed`: عدم تأیید تغییر
-- `telethon_error`: مشکل اتصال
-
-## 🔒 امنیت
-
-### بررسی مجوزها
-- تأیید ادمین بودن
-- بررسی مجوز تغییر اطلاعات
-- اعتبارسنجی دسترسی
-
-### مدیریت جلسه
-- ذخیره امن session
-- مدیریت خطاهای احراز هویت
-- محافظت از اطلاعات حساس
-
-## 🧪 تست
-
-### اجرای تست‌ها
 ```bash
-# اجرای تمام تست‌ها
-pytest
-
-# اجرای تست‌های خاص
-pytest guardian_tests/test_link_rotator.py
+pip install -r requirements.txt
 ```
 
-### تست‌های جدید
-- تست راستی‌آزمایی
-- تست مدیریت خطا
-- تست مجوزها
+3) Initialize DB:
 
-## 📈 بهبود عملکرد
+```bash
+python -m guardian.db.migrate
+```
 
-### بهینه‌سازی‌ها
-- کاهش درخواست‌های غیرضروری
-- مدیریت بهتر خطاها
-- بهبود تجربه کاربری
+4) Run:
 
-### نظارت
-- آمار عملکرد
-- تشخیص مشکلات
-- گزارش‌گیری
+```bash
+python -m guardian.main
+```
 
-## 🔄 تغییرات آینده
+5) Healthcheck:
 
-### ویژگی‌های پیشنهادی
-- چرخش خودکار بر اساس زمان
-- پشتیبانی از چندین کانال
-- API برای مدیریت خارجی
-- داشبورد وب
+```bash
+curl -s http://localhost:8080/healthz
+```
 
-### بهبودهای فنی
-- کش کردن اطلاعات
-- بهینه‌سازی درخواست‌ها
-- پشتیبانی از Webhook
+Grant the bot admin rights in your target channel. The Telethon session is stored under `sessions/`.
 
-## 📞 پشتیبانی
+## Testing
 
-### گزارش مشکل
-- استفاده از trace_id
-- ارائه لاگ‌های مربوطه
-- توضیح مراحل تولید مشکل
+```bash
+pytest -q
+```
 
-### راهنمایی
-- بررسی ماتریس سلامت
-- مرور آمار چرخش
-- تست مجوزها
-
----
-
-**نسخه:** 2.0.0  
-**تاریخ:** 2024  
-**وضعیت:** تولید آماده
+## Security Notes
+- No secrets are logged; sensitive fields are masked
+- Store secrets only in `.env`
+- Restrict the admin bot to your `ADMIN_ID`
